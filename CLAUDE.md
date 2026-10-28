@@ -37,8 +37,9 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
   nel valore dell'immesso; serve al risparmio solo se l'offerta luce è indicizzata al PUN.
 - **Regime** (`RidZonale` | `RidPmg`) da configurazione; il PMG sta nella tabella
   `price_floors(year, eur_mwh)`, non in costanti.
-- **Autoconsumo** = consumo − prelievo (ricade su prodotta − immessa se il fornitore non dà il
-  consumo, e la riga lo dichiara). Il prezzo è solo la parte **variabile** della bolletta
+- **Autoconsumo** = consumo − prelievo. C'è una **batteria**: se il fornitore non dà il consumo
+  lo si ricava dal bilancio (prodotta + prelevata − immessa − carica + scarica), **mai** come
+  prodotta − immessa; la riga dichiara la base usata. Il prezzo è solo la parte **variabile** della bolletta
   (energia, perdite, trasporto e oneri variabili, accise, IVA): le quote fisse non si evitano.
   Le tariffe stanno in `tariffs` con data di validità, mai in configurazione.
 - **Granularità**: dati a 5 minuti del meter → aggregati a 15 minuti con prezzo a 15 minuti;

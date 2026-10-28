@@ -156,7 +156,13 @@ A_q = C_q - I_q
 
 `C_q` è il consumo della casa, `I_q` l'energia prelevata dalla rete. Così il risparmio si conta nel momento in cui l'energia si consuma, e il conto resta giusto anche con una batteria: l'energia accumulata a mezzogiorno e consumata la sera vale al prezzo della sera.
 
-Se il fornitore non dà il consumo, si ricava `A_q = Pr_q - E_q` (prodotta meno immessa). Senza batteria il risultato è lo stesso; con una batteria sposta il risparmio nell'ora di carica e ci mette dentro le perdite, quindi la riga lo dichiara (`SelfConsumptionBasis = Consumption | ProductionMinusExport`) e la dashboard lo segnala. Presenza di una batteria nell'impianto: `<DA VERIFICARE>`.
+L'impianto **ha una batteria** (deciso il 2026-10-28), quindi la scorciatoia `A_q = Pr_q - E_q` (prodotta meno immessa) **non va usata**: sposterebbe il risparmio nell'ora di carica, a un prezzo diverso, e ci metterebbe dentro le perdite della batteria. Se il fornitore non dà il consumo, lo si ricava dal bilancio dell'energia:
+
+```latex
+C_q = Pr_q + I_q - E_q - Ch_q + Dis_q
+```
+
+`Ch_q` e `Dis_q` sono l'energia caricata e scaricata dalla batteria. La riga dichiara da dove viene il consumo (`SelfConsumptionBasis = Measured | Balance`) e la dashboard lo segnala. Se il fornitore non dà né il consumo né i flussi della batteria, il risparmio non si calcola e la dashboard lo dice, invece di mostrare un numero sbagliato.
 
 #### Prezzo della bolletta
 
@@ -283,6 +289,8 @@ CREATE TABLE energy_readings (
     import_wh       INTEGER,           -- prelevata dalla rete
     production_wh   INTEGER,
     consumption_wh  INTEGER,           -- consumo della casa, se il fornitore lo dà
+    battery_charge_wh    INTEGER,      -- energia caricata nella batteria
+    battery_discharge_wh INTEGER,      -- energia scaricata dalla batteria
     imported_at     INTEGER NOT NULL,
     PRIMARY KEY (ts_utc, resolution, source)
 );
@@ -440,7 +448,7 @@ Prerequisiti:
 
 - [ ] Chiedere all'installatore l'account Northbound FusionSolar, con i permessi di lettura su impianto e dispositivi
 - [ ] Registrarsi al servizio API del GME e ricevere le credenziali
-- [ ] Verificare che ci sia lo smart meter sul punto di scambio e che FusionSolar mostri l'energia immessa e il consumo della casa
+- [ ] Verificare che ci sia lo smart meter sul punto di scambio e che FusionSolar mostri l'energia immessa, il consumo della casa e i flussi della batteria
 - [ ] Recuperare dalla convenzione GSE il regime (prezzo zonale o PMG) e la granularità di valorizzazione
 - [ ] Recuperare dall'ultima bolletta tipo di offerta, prezzi dell'energia, perdite, quota variabile di trasporto e oneri, accise e IVA
 - [ ] Salvare una risposta reale di `getKpiStationHour` e uno zip reale del GME nella cartella locale tests/fixtures.local/, da cui ricavare le fixture anonimizzate e sintetiche
@@ -450,13 +458,13 @@ Decisioni prese:
 - [x] Database: SQLite (2026-10-28)
 - [x] Energia letta da fornitori intercambiabili dietro `IEnergySource`; FusionSolar è il primo (2026-10-28)
 - [x] Valore dell'autoconsumo incluso nella prima versione (2026-10-28)
+- [x] L'impianto ha una batteria: consumo misurato o da bilancio, mai prodotta meno immessa (2026-10-28)
 
 Decisioni aperte:
 
 - [ ] Licenza del repository (ad esempio MIT)
 - [ ] Modbus locale come secondo fornitore nella prima versione o rinviato
 - [ ] Hosting: mini PC/NAS di casa o VM in cloud
-- [ ] Batteria presente o no (cambia la base dell'autoconsumo se il fornitore non dà il consumo)
 - [ ] Confronto del risparmio stimato con le bollette reali (tabella di bollette inserite a mano, come `gse_payments`) sì o no
 
 ## Piano di sviluppo per Claude Code
@@ -464,7 +472,7 @@ Decisioni aperte:
 Il lavoro si divide in nove milestone, ognuna chiusa da un criterio verificabile. Questo documento è `docs/analisi.md`; il `CLAUDE.md` alla radice lo riassume e lo cita.
 
 1. **Scheletro.** Solution .NET con i progetti descritti in Architettura, `docker-compose.yml` con il volume per SQLite, build e test in CI (GitHub Actions). Fatto quando `dotnet test` passa in CI su una solution vuota e il repo ha .gitignore, LICENSE, secret scanning e push protection.
-2. **Dominio e calcolo.** Tipi `Interval`, `EnergyReading`, `MarketPrice`, `Tariff`, il calcolatore di valore e risparmio, la conversione ora italiana/UTC, il calendario con le fasce ARERA e i festivi. Nessuna dipendenza esterna. Fatto quando passano i test sui giorni da 92, 96 e 100 quarti d'ora, sul ricadere al prezzo orario, sulle fasce nei festivi e sui tre tipi di offerta.
+2. **Dominio e calcolo.** Tipi `Interval`, `EnergyReading`, `MarketPrice`, `Tariff`, il calcolatore di valore e risparmio (con il bilancio della batteria), la conversione ora italiana/UTC, il calendario con le fasce ARERA e i festivi. Nessuna dipendenza esterna. Fatto quando passano i test sui giorni da 92, 96 e 100 quarti d'ora, sul ricadere al prezzo orario, sulle fasce nei festivi e sui tre tipi di offerta.
 3. **Client GME.** Login, `RequestData`, decompressione dello zip, parser, job `gme-prices` con upsert. Fatto quando il parser passa sulla fixture sintetica (e, in locale, su un file reale) e il job importa un giorno su un database SQLite di test.
 4. **Fornitori di energia e FusionSolar.** Contratto `IEnergySource`, job `energy-import` indipendente dal fornitore, backfill; poi l'implementazione FusionSolar con login e token in memoria, limitatore per endpoint e gestione di `failCode`. Fatto quando il job passa con un fornitore finto in memoria e i test FusionSolar con un server finto (WireMock.Net) coprono sessione scaduta e frequenza eccessiva.
 5. **Persistenza e view.** Migrazioni EF Core, calendario, view di valorizzazione per quarto d'ora, ora, giorno e mese, con valore dell'immesso e risparmio. Fatto quando i totali delle view coincidono al centesimo con quelli del calcolatore del punto 2 su un dataset di prova che copre i tre tipi di offerta.
