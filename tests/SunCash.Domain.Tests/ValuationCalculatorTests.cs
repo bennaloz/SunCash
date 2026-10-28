@@ -66,11 +66,42 @@ public class ValuationCalculatorTests
         var rows = ValuationCalculator.ForDay(Input(Day, readings, prices));
         var row = rows.Single(r => r.Interval.StartUtc == Noon);
 
-        Assert.Equal(93, rows.Count); // 96 quarti, meno 4, più una riga oraria
+        Assert.Equal(24, rows.Count); // giorno di soli dati orari: anche le ore vuote sono righe orarie
         Assert.Equal(Resolution.Hour, row.Resolution);
         Assert.Equal(60, row.Interval.Minutes);
         Assert.Equal("12:00", row.LocalLabel);
         Assert.Equal(2000 / 1_000_000m * 100m, row.ExportValueEur);
+    }
+
+    [Fact]
+    public void Con_dati_fini_nel_giorno_le_ore_vuote_restano_a_15_minuti()
+    {
+        var readings = new List<EnergyReading> { Reading(Noon, 60, export: 2000), Reading(Noon.AddHours(2), 15, export: 10) };
+
+        var rows = ValuationCalculator.ForDay(Input(Day, readings, []));
+
+        Assert.Equal(93, rows.Count); // 96 quarti, meno 4, più una riga oraria
+    }
+
+    [Fact]
+    public void Senza_prezzi_il_prezzo_catturato_e_sconosciuto_non_zero()
+    {
+        var rows = ValuationCalculator.ForDay(Input(Day, [Reading(Noon, 60, export: 2000)], []));
+
+        var totals = ValuationTotals.Of(rows);
+
+        Assert.Equal(2000, totals.ExportWh);
+        Assert.Null(totals.CapturedPriceEurMwh);
+    }
+
+    [Fact]
+    public void Il_prezzo_catturato_conta_solo_l_energia_valorizzata()
+    {
+        var readings = new List<EnergyReading> { Reading(Noon, 60, export: 1000), Reading(Noon.AddHours(1), 60, export: 3000) };
+
+        var totals = ValuationTotals.Of(ValuationCalculator.ForDay(Input(Day, readings, [ZonalPrice(Noon, 60, 100m)])));
+
+        Assert.Equal(100m, totals.CapturedPriceEurMwh);
     }
 
     [Fact]

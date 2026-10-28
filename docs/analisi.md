@@ -252,7 +252,7 @@ I prezzi MGP sono a 15 minuti dal 1° ottobre 2025 e il GME li pubblica anche ag
 - se ci sono i dati a 5 minuti del meter, si aggregano a 15 minuti e si usa il prezzo a 15 minuti;
 - se c'è solo il dato orario, si usa il prezzo orario aggregato e ogni ora vale come un blocco unico.
 
-Se in un'ora i dati fini coprono solo alcuni quarti d'ora, l'ora intera usa il dato orario: mescolare le due vie dentro la stessa ora conterebbe l'energia due volte. Se non c'è nessun dato, le righe a 15 minuti restano senza energia, così il buco si vede.
+Se in un'ora i dati fini coprono solo alcuni quarti d'ora, l'ora intera usa il dato orario: mescolare le due vie dentro la stessa ora conterebbe l'energia due volte. Se non c'è nessun dato, l'ora resta senza energia, così il buco si vede: come riga oraria se il giorno ha solo dati orari (così l'asse del grafico non mescola ore e quarti d'ora), altrimenti come quattro righe a 15 minuti (deciso il 2026-10-28).
 
 Ogni riga di valore registra quale delle due vie ha usato (`Resolution = Quarter | Hour`), così la dashboard lo può segnalare. La stessa regola vale per il risparmio: con il solo dato orario, il prezzo della bolletta è quello dell'ora. Con quale granularità il GSE valorizzi oggi l'energia ritirata: `<DA VERIFICARE: convenzione GSE e delibere ARERA dopo il passaggio ai 15 minuti>`.
 
@@ -473,7 +473,7 @@ Le date nei parametri sono in ora italiana (`yyyy-MM-dd`); l'API le converte in 
 1. **Oggi**: barre per quarto d'ora o per ora dei kWh immessi e autoconsumati, linea del prezzo zonale sull'asse secondario, totale in euro del giorno diviso fra immesso e risparmio.
 2. **Calendario**: mese a griglia con il beneficio di ogni giorno; un clic apre il dettaglio del giorno.
 3. **Andamento**: beneficio mensile dell'anno e cumulato, con le due voci separate e i pagamenti GSE affiancati quando presenti.
-4. **Prezzo catturato**: prezzo medio ponderato ottenuto dall'impianto contro media del prezzo zonale, per capire quanto pesa produrre nelle ore centrali.
+4. **Prezzo catturato**: prezzo medio ponderato ottenuto dall'impianto contro media del prezzo zonale, per capire quanto pesa produrre nelle ore centrali. Si calcola solo sull'energia che ha un prezzo: senza prezzi è sconosciuto, non zero.
 5. **Bollette**: offerte luce inserite con i periodi di validità e modulo per aggiungerne una; bollette reali affiancate a quelle stimate, per vedere se il modello della tariffa regge.
 6. **Stato**: esito dei job, fornitore attivo, intervalli mancanti, pulsante di sincronizzazione manuale.
 
