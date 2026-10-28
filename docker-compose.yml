@@ -1,0 +1,19 @@
+# SunCash in casa: l'API (con i job di import) e il suo file SQLite su un volume locale.
+# Il servizio web (Angular servito da nginx) arriva con la milestone 7.
+# I segreti non stanno qui: si passano con un file .env accanto a questo (ignorato da git).
+services:
+  suncash-api:
+    build:
+      context: .
+      dockerfile: src/SunCash.Api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__SunCash: "Data Source=/data/suncash.db"
+    volumes:
+      # Disco locale: SQLite non va mai su un file system di rete (docs/analisi.md, Deploy).
+      - suncash-data:/data
+
+volumes:
+  suncash-data:

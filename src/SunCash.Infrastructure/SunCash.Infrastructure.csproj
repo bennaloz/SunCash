@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SunCash.Domain\SunCash.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
