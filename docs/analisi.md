@@ -4,7 +4,8 @@ Oct 28, 2026 · @Riccardo Beninatto
 
 > **Revisione 2026-10-28.** Rispetto alla prima stesura: database **SQLite** al posto di
 > PostgreSQL; lettura dell'energia pensata per **più fornitori** (FusionSolar è il primo, non
-> l'unico); il **risparmio da autoconsumo** entra nel perimetro della prima versione.
+> l'unico); il **risparmio da autoconsumo** entra nel perimetro della prima versione; il calcolo
+> vive **solo nel calcolatore di dominio**, non anche in view SQL (vedi «Modello dati»).
 
 ## Nome dell'app
 
@@ -68,7 +69,7 @@ Il contratto, in sostanza:
 
 Un impianto ha **un fornitore attivo alla volta** (`Energy:Provider`). Il cambio di fornitore è un evento raro: il nuovo riparte da dove si è fermato il vecchio, e le misure di entrambi restano distinte per `source`.
 
-Aggiungere un fornitore vuol dire: una nuova implementazione di `IEnergySource`, la sua sezione di configurazione, le sue fixture anonimizzate, la registrazione nel contenitore. Nessuna modifica a job, schema o view.
+Aggiungere un fornitore vuol dire: una nuova implementazione di `IEnergySource`, la sua sezione di configurazione, le sue fixture anonimizzate, la registrazione nel contenitore. Nessuna modifica a job, schema o calcolo.
 
 #### Primo fornitore: Huawei FusionSolar
 
@@ -217,7 +218,7 @@ Tre vie che scrivono tutte nella stessa tabella `tariffs`; la colonna `origin` d
 | Codice offerta: l'app scarica i prezzi dagli open data del Portale Offerte ARERA | `OfferCode` | Dopo la prima versione. `<DA VERIFICARE: se il portale conserva le offerte non più in vendita>` |
 | PDF della bolletta letto da un modello AI, con conferma dell'utente | `BillPdf` | Dopo la prima versione. Manda la bolletta a un servizio esterno e costa qualche centesimo a bolletta |
 
-Le vie 2 e 3 sono estensioni: non cambiano tabella, calcolo né view, e quando falliscono resta il modulo. Tipo di offerta in essere: `<DA VERIFICARE: ultima bolletta>`. Indicizzazione al PUN orario o mensile, se l'offerta è indicizzata: `<DA VERIFICARE: condizioni economiche del contratto>`.
+Le vie 2 e 3 sono estensioni: non cambiano tabella né calcolo, e quando falliscono resta il modulo. Tipo di offerta in essere: `<DA VERIFICARE: ultima bolletta>`. Indicizzazione al PUN orario o mensile, se l'offerta è indicizzata: `<DA VERIFICARE: condizioni economiche del contratto>`.
 
 ### Granularità
 
@@ -234,7 +235,7 @@ Ogni riga di valore registra quale delle due vie ha usato (`Resolution = Quarter
 
 Tutti i timestamp si salvano in UTC. Il GME ragiona in ora italiana: il giorno del passaggio all'ora legale ha 23 ore (92 quarti d'ora), quello del ritorno all'ora solare 25 (100 quarti d'ora). La conversione usa `TimeZoneInfo` con l'id `Europe/Rome`, mai offset fissi. Servono test dedicati sulle due date di fine marzo e fine ottobre.
 
-SQLite non conosce i fusi orari, quindi le view non possono convertire da sole. La conversione la fa **un solo punto**, il dominio, che scrive il calendario `time_slots`: per ogni quarto d'ora UTC la data italiana, l'etichetta locale e la fascia ARERA. Le view raggruppano e scelgono la fascia leggendo da lì. Le ore non hanno bisogno del calendario: l'Italia è sempre a un numero intero di ore da UTC, quindi l'ora UTC e l'ora italiana coincidono come intervallo.
+La conversione la fa **un solo punto**, `ItalianTime` nel dominio: data italiana, etichetta locale e fascia ARERA di ogni quarto d'ora si calcolano al volo, mai nel database (SQLite non conosce i fusi orari). Le ore non hanno bisogno di conversioni: l'Italia è sempre a un numero intero di ore da UTC, quindi l'ora UTC e l'ora italiana coincidono come intervallo.
 
 ### Costi
 
@@ -244,17 +245,16 @@ Fonti: [GME, report MGP settimana 40/2025](<https://gme.mercatoelettrico.org/Por
 
 ## Architettura
 
-Un solo backend .NET ospita sia l'API sia i due job di import; il calcolo vive nelle view del database e in una libreria di dominio senza dipendenze, testabile da sola.
+Un solo backend .NET ospita sia l'API sia i due job di import; il calcolo vive in una libreria di dominio senza dipendenze, testabile da sola.
 
 ```text
  Fornitore energia ──► job energy-import ──┐
- (FusionSolar, …)                          ├──► SQLite ──► view di valorizzazione ──► API ──► Web (Angular)
+ (FusionSolar, …)                          ├──► SQLite ──► calcolatore di dominio ──► API ──► Web (Angular)
  GME (API MGP/PUN) ──► job gme-prices ─────┘   (dati grezzi,  (euro calcolati,
-                                                calendario,     mai salvati)
-                                                tariffe)
+                                                tariffe)        mai salvati)
 ```
 
-I job scrivono solo dati grezzi con upsert; l'API non scrive misure né prezzi, legge le view di valutazione e scrive solo i dati inseriti a mano (offerte, bollette, pagamenti GSE).
+I job scrivono solo dati grezzi con upsert; l'API non scrive misure né prezzi, legge i dati grezzi, li passa al calcolatore e scrive solo i dati inseriti a mano (offerte, bollette, pagamenti GSE).
 
 Struttura della solution (.NET 10, LTS):
 
@@ -283,7 +283,9 @@ I job stanno nello stesso host dell'API per semplicità di deploy, e con SQLite 
 
 ## Modello dati
 
-Il database è **SQLite** con EF Core (`Microsoft.EntityFrameworkCore.Sqlite`): un file solo, niente server, backup con una copia. Energia, prezzi e tariffe si salvano grezzi; il valore in euro è sempre calcolato da una view, mai salvato, così un cambio di regola non richiede migrazioni di dati.
+Il database è **SQLite** con EF Core (`Microsoft.EntityFrameworkCore.Sqlite`): un file solo, niente server, backup con una copia. Energia, prezzi e tariffe si salvano grezzi; il valore in euro è sempre calcolato al momento della lettura dal calcolatore di dominio, mai salvato, così un cambio di regola non richiede migrazioni di dati.
+
+**Niente view di valorizzazione** (decisione del 2026-10-28, durante la milestone 5). La prima stesura prevedeva view SQL che ripetevano il calcolo, con un test che ne confrontava i totali con il calcolatore: due copie della stessa regola (fasce, batteria, ricaduta oraria, tariffe valide in una data) che prima o poi divergono. Il calcolatore lavora su un anno intero, 35 mila quarti d'ora, in pochi millisecondi, quindi resta l'unico posto del calcolo. Le view **non vanno implementate**; anche il calendario `time_slots` previsto per loro non serve più.
 
 Tre scelte discendono da SQLite:
 
@@ -292,14 +294,6 @@ Tre scelte discendono da SQLite:
 - **WAL attivo** (`PRAGMA journal_mode=WAL`), così l'API legge mentre un job scrive.
 
 ```sql
--- Calendario: un quarto d'ora per riga, scritto dal dominio (unico punto che conosce Europe/Rome)
-CREATE TABLE time_slots (
-    ts_utc      INTEGER PRIMARY KEY,   -- inizio quarto d'ora, epoch UTC in secondi
-    local_date  TEXT    NOT NULL,      -- 'yyyy-MM-dd' in ora italiana
-    local_label TEXT    NOT NULL,      -- 'HH:mm' in ora italiana (nel ritorno all'ora solare compare due volte)
-    tariff_band TEXT    NOT NULL       -- fascia ARERA: 'F1' | 'F2' | 'F3'
-);
-
 -- Prezzi di mercato, una riga per intervallo
 CREATE TABLE market_prices (
     ts_utc      INTEGER NOT NULL,      -- inizio intervallo
@@ -384,7 +378,7 @@ CREATE TABLE gse_payments (
 );
 ```
 
-La view `v_valuation_quarter` parte da `time_slots`, unisce `energy_readings` aggregate a 15 minuti con `market_prices` (zona configurata, `resolution = 15`) e ricade sul prezzo orario dove manca il dato a 15 minuti. Accanto al valore dell'immesso calcola autoconsumo e risparmio, prendendo la tariffa valida in `local_date` e la fascia da `tariff_band`. Da lì derivano `v_valuation_hour`, `v_valuation_day` e `v_valuation_month`, raggruppate sulle date italiane del calendario.
+Per valorizzare un periodo, l'API legge misure, prezzi, offerte e parte regolata del periodo e li passa a `ValuationCalculator` giorno per giorno; ore, giorni e mesi sono somme delle sue righe, fatte anch'esse nel dominio.
 
 Gli import sono idempotenti: ogni scrittura è un upsert sulla chiave primaria (`INSERT … ON CONFLICT DO UPDATE`), quindi rilanciare un job su un intervallo già importato non crea duplicati.
 
@@ -397,7 +391,7 @@ Due job in un unico processo, ognuno un `BackgroundService` con `PeriodicTimer` 
 | `gme-prices` | Ogni giorno nel primo pomeriggio, con retry ogni 30 minuti fino a successo | Esiti MGP della zona configurata e PUN Index GME, a 15 e 60 minuti | Il giorno successivo, più gli ultimi 7 giorni per eventuali rettifiche |
 | `energy-import` | Ogni ora al minuto 10 | Le misure del fornitore attivo, alla granularità più fine che dichiara | Oggi e ieri, perché i cloud dei fornitori consolidano i dati in ritardo |
 
-`energy-import` non conosce il fornitore: chiede a `IEnergySource` un giorno alla volta e scrive quello che riceve. Il calendario `time_slots` lo estende il dominio, prima di ogni import, fino a fine anno successivo.
+`energy-import` non conosce il fornitore: chiede a `IEnergySource` un giorno alla volta e scrive quello che riceve.
 
 Orario di pubblicazione degli esiti MGP del giorno dopo: `<DA VERIFICARE: DTF GME sulle tempistiche dei mercati>`.
 
@@ -424,7 +418,7 @@ Ogni esecuzione scrive in `sync_state` esito ed eventuale errore. La dashboard m
 
 ## API REST e frontend Angular
 
-L'API ASP.NET Core espone solo letture sulle view di valorizzazione, più le poche scritture manuali. Il frontend Angular la consuma e non contiene logica di calcolo.
+L'API ASP.NET Core espone letture calcolate dal calcolatore di dominio, più le poche scritture manuali. Il frontend Angular la consuma e non contiene logica di calcolo.
 
 | Endpoint | Restituisce |
 | --- | --- |
@@ -528,7 +522,7 @@ Il lavoro si divide in nove milestone, ognuna chiusa da un criterio verificabile
 2. **Dominio e calcolo.** Tipi `Interval`, `EnergyReading`, `MarketPrice`, `Tariff`, il calcolatore di valore e risparmio (con il bilancio della batteria), la conversione ora italiana/UTC, il calendario con le fasce ARERA e i festivi. Nessuna dipendenza esterna. Fatto quando passano i test sui giorni da 92, 96 e 100 quarti d'ora, sul ricadere al prezzo orario, sulle fasce nei festivi e sui tre tipi di offerta.
 3. **Client GME.** Login, `RequestData`, decompressione dello zip, parser, job `gme-prices` con upsert. Fatto quando il parser passa sulla fixture sintetica (e, in locale, su un file reale) e il job importa un giorno su un database SQLite di test.
 4. **Fornitori di energia e FusionSolar.** Contratto `IEnergySource`, job `energy-import` indipendente dal fornitore, backfill; poi l'implementazione FusionSolar con login e token in memoria, limitatore per endpoint e gestione di `failCode`. Fatto quando il job passa con un fornitore finto in memoria e i test FusionSolar con un server finto (WireMock.Net) coprono sessione scaduta e frequenza eccessiva.
-5. **Persistenza e view.** Migrazioni EF Core, calendario, view di valorizzazione per quarto d'ora, ora, giorno e mese, con valore dell'immesso e risparmio. Fatto quando i totali delle view coincidono al centesimo con quelli del calcolatore del punto 2 su un dataset di prova che copre i tre tipi di offerta.
+5. **Persistenza e valorizzazione.** Migrazioni EF Core, upsert dei dati grezzi, servizio che legge un periodo e lo passa al calcolatore, aggregazioni per ora, giorno e mese. Fatto quando, su un database SQLite di prova, i totali del servizio coincidono con quelli del calcolatore applicato agli stessi dati in memoria, per i tre tipi di offerta.
 6. **API.** Endpoint della sezione API REST, con OpenAPI. Fatto quando i test di integrazione coprono un giorno normale, uno del cambio d'ora e un cambio di tariffa a metà mese.
 7. **Frontend.** Le sei schermate in Angular. Fatto quando la dashboard mostra dati reali importati da entrambe le fonti e una tariffa reale.
 8. **Deploy.** Immagini Docker, compose di produzione, backup giornaliero del file SQLite. Fatto quando l'app gira sul server di casa e i job girano da soli per una settimana senza errori.

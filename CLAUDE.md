@@ -31,8 +31,9 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
 ## Regole di dominio che non si negoziano
 
 - **Il valore in euro non si salva mai**: si salvano energia, prezzi e tariffe grezzi, valore e
-  risparmio li calcolano le view (`v_valuation_quarter` → `hour` → `day` → `month`). Un cambio di regola non
-  richiede migrazioni di dati.
+  risparmio li calcola **solo** `ValuationCalculator` nel dominio, al momento della lettura. Un
+  cambio di regola non richiede migrazioni di dati. ⛔ Niente view SQL che ripetono il calcolo:
+  sarebbero una seconda copia della regola (deciso il 2026-10-28, vedi analisi «Modello dati»).
 - **Prezzo del calcolo = prezzo zonale MGP** della zona configurata (`Valuation:Zone`, nessuna
   zona cablata nel codice). Il **PUN** si importa solo come riferimento nei grafici, non entra
   nel valore dell'immesso; serve al risparmio solo se l'offerta luce è indicizzata al PUN.
@@ -49,9 +50,8 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
   solo dato orario → prezzo orario, ora come blocco unico. Ogni riga dichiara la sua
   `Resolution` (`Quarter` | `Hour`).
 - **Tempo**: tutto in UTC nel database (epoch in secondi, `INTEGER`); conversioni con
-  `TimeZoneInfo` `Europe/Rome`, **mai offset fissi**. SQLite non conosce i fusi: data italiana,
-  etichetta locale e fascia ARERA le scrive **solo il dominio** nel calendario `time_slots`, e le
-  view leggono da lì. I giorni del cambio d'ora hanno 92 e 100 quarti d'ora e vanno testati.
+  `TimeZoneInfo` `Europe/Rome`, **mai offset fissi**. Data italiana, etichetta locale e fascia ARERA
+  le calcola **solo** `ItalianTime`/`TimeSlotCalendar`, mai il database (SQLite non conosce i fusi). I giorni del cambio d'ora hanno 92 e 100 quarti d'ora e vanno testati.
 - **Costi fissi e corrispettivo GSE**: solo nel cumulato, mai nel valore orario.
 - **Import idempotenti**: ogni scrittura è un upsert sulla chiave primaria.
 - **I numeri sono una stima**: il GSE liquida sulle misure del distributore, non del meter.
@@ -69,7 +69,7 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 
 - .NET 10, SQLite (un file, WAL attivo, energia in Wh `INTEGER`, prezzi `REAL`, arrotondamento
   al centesimo solo in presentazione), configurazione con `IOptions<T>` validate all'avvio.
-- I job scrivono solo dati grezzi; l'API legge le view e scrive solo i dati manuali
+- I job scrivono solo dati grezzi; l'API li legge, li passa al calcolatore e scrive solo i dati manuali
   (`tariffs`, `bills`, `gse_payments`).
 - SQLite vuole **un solo processo che scrive** e **mai un file system di rete**: i job restano
   nell'host dell'API, il volume è su disco locale.
@@ -77,7 +77,7 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   timestamp UTC **e** l'etichetta locale già calcolata.
 - **Fornitori di energia intercambiabili**: tutto ciò che è specifico di un fornitore (login,
   rate limit, codici d'errore, nomi dei campi) sta nella sua implementazione di `IEnergySource`.
-  Job `energy-import`, schema, view e API **non nominano mai un fornitore**: se serve farlo, il
+  Job `energy-import`, schema, calcolo e API **non nominano mai un fornitore**: se serve farlo, il
   contratto è sbagliato. Un fornitore attivo alla volta (`Energy:Provider`), opzioni sotto
   `Energy:<Fornitore>`, misure distinte per `source`.
 
@@ -104,7 +104,7 @@ Nove milestone, ognuna con il suo criterio di «fatto» in
 [`docs/analisi.md` § Piano di sviluppo](docs/analisi.md#piano-di-sviluppo-per-claude-code):
 
 1. Scheletro · 2. Dominio e calcolo · 3. Client GME · 4. Fornitori di energia e FusionSolar ·
-5. Persistenza e view · 6. API · 7. Frontend · 8. Deploy · 9. Confronto con la realtà
+5. Persistenza e valorizzazione · 6. API · 7. Frontend · 8. Deploy · 9. Confronto con la realtà
 
 Una milestone si chiude solo quando il suo criterio è verificato, non quando compila. Modbus come
 secondo fornitore è fuori dalle milestone.
@@ -116,7 +116,7 @@ secondo fornitore è fuori dalle milestone.
 - Client esterni contro server finti (WireMock.Net), mai contro i servizi reali in CI.
 - Persistenza su SQLite vero (file temporaneo), mai sul provider InMemory di EF Core.
 - Il job `energy-import` si testa con un fornitore finto: prova che il contratto basta.
-- I totali delle view devono coincidere con quelli del calcolatore di dominio.
+- I totali letti dal database devono coincidere con il calcolatore applicato agli stessi dati in memoria.
 
 ## Git
 
