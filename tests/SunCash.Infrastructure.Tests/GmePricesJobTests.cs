@@ -87,21 +87,34 @@ public sealed class GmePricesJobTests : IDisposable
         Assert.Contains("Password scaduta", ex.Message);
     }
 
-    private async Task<SyncOutcome> RunJobAsync(TestDatabase db)
+    private Task<SyncOutcome> RunJobAsync(TestDatabase db) =>
+        RunJobAsync(db, new GmeOptions { BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto" });
+
+    private async Task<SyncOutcome> RunJobAsync(TestDatabase db, GmeOptions gmeOptions)
     {
         await using var context = db.NewContext();
+        var options = MsOptions.Create(gmeOptions);
         var job = new GmePricesJob(
-            new GmeClient(new HttpClient(), MsOptions.Create(new GmeOptions
-            {
-                BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto",
-            })),
+            new GmeClient(new HttpClient(), options),
             new MarketPriceStore(context, _clock),
             new SyncStateStore(context, _clock),
-            MsOptions.Create(new GmeOptions()),
+            options,
             MsOptions.Create(new SyncOptions { StartDate = new DateOnly(2026, 10, 24) }),
             MsOptions.Create(new ValuationOptions { Zone = "NORD" }),
             _clock);
         return await job.RunAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Senza_credenziali_il_job_lo_dice_e_non_chiama_il_GME()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+
+        var outcome = await RunJobAsync(db, new GmeOptions { BaseUrl = new Uri(_gme.Url + "/request/") });
+
+        Assert.Equal(SyncStatus.Failed, outcome.Status);
+        Assert.Contains("Credenziali GME mancanti", outcome.Message);
+        Assert.Empty(_gme.LogEntries);
     }
 
     private void GivenLogin() =>

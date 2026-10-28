@@ -78,6 +78,12 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   nuovo implementa `ISyncJob` e aggiunge la sua riga in `ServiceCollectionExtensions.Schedules`.
 - ⚠️ Il `.gitignore` standard di .NET ignora le cartelle `Backup*/`: per questo il backup sta in
   `DbBackup/`. Dopo aver creato una cartella, controllare con `git status` che sia davvero tracciata.
+- Su Azure (`infra/`, `docs/deploy-azure.md`) il disco del container non sopravvive a un riavvio:
+  il database riparte dall'ultimo backup su Azure Files (`DatabaseRestore`), e il backup gira
+  anche allo spegnimento. ⛔ Mai puntare la connessione SQLite su Azure Files. Mai esporre l'app
+  su internet senza il login Microsoft (senza `AUTH_CLIENT_ID` l'ingress resta interno).
+- Le credenziali GME sono facoltative all'avvio (il job lo segnala in «Stato»); quelle del
+  fornitore di energia no.
 - Le date in ingresso all'API sono in ora italiana (`yyyy-MM-dd`); le risposte portano il
   timestamp UTC **e** l'etichetta locale già calcolata.
 - **Fornitori di energia intercambiabili**: tutto ciò che è specifico di un fornitore (login,
