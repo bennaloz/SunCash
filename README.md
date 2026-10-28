@@ -40,6 +40,11 @@ docker compose up -d --build
 
 Prima di avviare, riempire `.env` con le credenziali. L'app risponde su `http://localhost:8080`.
 
+## Su Azure
+
+Container Apps con login Microsoft e backup su Azure Files: guida in
+[`docs/deploy-azure.md`](docs/deploy-azure.md), deploy con il workflow manuale «Deploy Azure».
+
 ## Licenza
 
 [GNU AGPL-3.0](LICENSE). Chi offre SunCash come servizio in rete deve renderne disponibile il

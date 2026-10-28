@@ -58,3 +58,44 @@ public sealed class DatabaseBackupJobTests : IDisposable
             Directory.Delete(_dir, recursive: true);
     }
 }
+
+public sealed class DatabaseRestoreTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), $"suncash-restore-{Guid.NewGuid():N}");
+
+    [Fact]
+    public void Se_il_database_manca_riparte_dalla_copia_piu_recente()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "backups"));
+        File.WriteAllText(BackupFiles.PathFor(Path.Combine(_dir, "backups"), new DateOnly(2026, 10, 26)), "vecchia");
+        File.WriteAllText(BackupFiles.PathFor(Path.Combine(_dir, "backups"), new DateOnly(2026, 10, 27)), "recente");
+        var database = Path.Combine(_dir, "data", "suncash.db");
+
+        var used = DatabaseRestore.RestoreIfMissing($"Data Source={database}", Path.Combine(_dir, "backups"),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+
+        Assert.EndsWith("suncash-20261027.db", used);
+        Assert.Equal("recente", File.ReadAllText(database));
+    }
+
+    [Fact]
+    public void Se_il_database_c_e_non_lo_tocca()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "backups"));
+        File.WriteAllText(BackupFiles.PathFor(Path.Combine(_dir, "backups"), new DateOnly(2026, 10, 27)), "copia");
+        var database = Path.Combine(_dir, "suncash.db");
+        File.WriteAllText(database, "vivo");
+
+        var used = DatabaseRestore.RestoreIfMissing($"Data Source={database}", Path.Combine(_dir, "backups"),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+
+        Assert.Null(used);
+        Assert.Equal("vivo", File.ReadAllText(database));
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_dir))
+            Directory.Delete(_dir, recursive: true);
+    }
+}

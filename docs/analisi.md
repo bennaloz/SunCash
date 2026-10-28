@@ -493,9 +493,9 @@ docker compose up -d --build
 
 Il backup giornaliero è il terzo job dell'app, `db-backup`, alle 03:17: una copia coerente fatta da SQLite stesso con `VACUUM INTO`, mai una copia del file a database aperto. Le copie vanno in `Backup:Directory` (nel compose `./backups`) e si tengono per `Backup:KeepDays` giorni (predefinito 14). Stare nel processo dell'app tiene un solo scrittore sul file e mette l'esito del backup nella pagina «Stato» come gli altri job. Le copie in `./backups` vanno poi portate fuori dalla macchina (disco esterno, cloud) con lo strumento che si preferisce: un backup sullo stesso disco non protegge da un guasto del disco.
 
-In alternativa: una piccola VM in cloud con il volume su disco locale. SQLite non va messo su un file system di rete (Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Per un uso personale l'hosting di casa basta.
+In alternativa, **Azure Container Apps** (deciso il 2026-10-28 per provare l'app; guida in [`docs/deploy-azure.md`](deploy-azure.md), workflow manuale `Deploy Azure`). Due container nella stessa app (API e nginx), una sola replica sempre accesa, login con account Microsoft tramite l'autenticazione integrata: senza login configurato l'app non è esposta su internet. SQLite non va messo su un file system di rete (Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Quindi il database sta sul disco locale del container, che non sopravvive a un riavvio, e il backup va su Azure Files ogni notte e a ogni spegnimento; all'avvio, se il database manca, l'app riparte dall'ultima copia (`DatabaseRestore`). Il backup scrive la copia in locale e poi la sposta, così SQLite non apre mai un file su Azure Files. Ordine di grandezza dei costi: 10-20 € al mese.
 
-L'app non ha login nella prima versione: la protezione è la rete. Se in futuro si espone su internet, serve un'autenticazione davanti (ad esempio Entra ID o un reverse proxy con autenticazione).
+L'app non ha login proprio: in casa la protezione è la rete. Su internet serve un'autenticazione davanti: su Azure è l'autenticazione integrata di Container Apps con Entra ID, fuori casa una VPN o un reverse proxy con autenticazione.
 
 ## Decisioni aperte e prerequisiti
 
@@ -515,6 +515,7 @@ Decisioni prese:
 - [x] Database: SQLite (2026-10-28)
 - [x] Energia letta da fornitori intercambiabili dietro `IEnergySource`; FusionSolar è il primo (2026-10-28)
 - [x] Valore dell'autoconsumo incluso nella prima versione (2026-10-28)
+- [x] Credenziali GME facoltative all'avvio: arrivano giorni dopo la registrazione, e l'app deve partire con i soli dati dell'impianto; la pagina Stato segnala che mancano (2026-10-28)
 - [x] Licenza AGPL-3.0: chi offre SunCash come servizio online deve pubblicarne il codice (2026-10-28)
 - [x] Offerta luce inserita con il modulo manuale; codice offerta ARERA e PDF della bolletta come estensioni successive, con il modulo come fallback (2026-10-28)
 - [x] Parte regolata della bolletta nel repo, aggiornata a trimestre (2026-10-28)
@@ -524,7 +525,7 @@ Decisioni prese:
 Decisioni aperte:
 
 - [ ] Modbus locale come secondo fornitore nella prima versione o rinviato
-- [ ] Hosting: mini PC/NAS di casa o VM in cloud
+- [ ] Hosting definitivo: mini PC/NAS di casa o Azure Container Apps (per provarla si usa Azure)
 
 ## Piano di sviluppo per Claude Code
 

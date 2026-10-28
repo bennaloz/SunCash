@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
     /// <summary>Fa girare i job da soli (non nei test dell'API).</summary>
     public static IServiceCollection AddSunCashSchedules(this IServiceCollection services)
     {
+        services.AddHostedService<BackupOnShutdown>();
         foreach (var schedule in Schedules)
             services.AddSingleton<Microsoft.Extensions.Hosting.IHostedService>(sp => new SyncScheduler(
                 schedule, sp.GetRequiredService<SyncJobRunner>(), sp.GetRequiredService<TimeProvider>(),

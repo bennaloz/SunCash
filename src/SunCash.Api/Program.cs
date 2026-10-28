@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using SunCash.Api.Endpoints;
 using SunCash.Infrastructure;
+using SunCash.Infrastructure.DbBackup;
 using SunCash.Infrastructure.Options;
 using SunCash.Infrastructure.Persistence;
 
@@ -14,6 +15,11 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
+
+DatabaseRestore.RestoreIfMissing(
+    builder.Configuration.GetConnectionString("SunCash")!,
+    builder.Configuration[$"{BackupOptions.Section}:Directory"],
+    app.Logger);
 
 using (var scope = app.Services.CreateScope())
 {

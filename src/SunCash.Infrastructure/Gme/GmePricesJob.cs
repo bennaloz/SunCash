@@ -35,6 +35,9 @@ public sealed class GmePricesJob(
     /// <inheritdoc />
     public async Task<SyncOutcome> RunAsync(CancellationToken ct)
     {
+        if (!gme.Value.HasCredentials)
+            return SyncOutcome.Failed("Credenziali GME mancanti: Gme:UserName e Gme:Password.");
+
         var zone = valuation.Value.Zone;
         string[] zones = [zone, MarketPrice.PunZone];
         var today = ItalianTime.LocalDate(clock.GetUtcNow());

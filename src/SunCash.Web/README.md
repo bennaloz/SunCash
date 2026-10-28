@@ -13,7 +13,7 @@ npm start
 ```
 
 `npm start` apre `http://localhost:4200` e inoltra `/api` all'API su `http://localhost:5224`
-(`proxy.conf.json`). In produzione lo fa nginx (`nginx.conf`).
+(`proxy.conf.json`). In produzione lo fa nginx (`nginx.conf.template`, con l'indirizzo dell'API in `API_UPSTREAM`).
 
 Colori, raggi e dimensioni stanno solo nei token di `src/styles.css`, con tema chiaro e scuro; la
 soglia mobile è 860px.

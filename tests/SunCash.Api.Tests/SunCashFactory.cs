@@ -29,8 +29,6 @@ public sealed class SunCashFactory : WebApplicationFactory<Program>
         builder.UseSetting("Energy:FusionSolar:UserName", "utente");
         builder.UseSetting("Energy:FusionSolar:SystemCode", "segreto");
         builder.UseSetting("Energy:FusionSolar:StationCode", "NE=00000000");
-        builder.UseSetting("Gme:UserName", "utente");
-        builder.UseSetting("Gme:Password", "segreto");
         builder.ConfigureServices(s => s.Replace(ServiceDescriptor.Singleton<TimeProvider>(Clock)));
     }
 

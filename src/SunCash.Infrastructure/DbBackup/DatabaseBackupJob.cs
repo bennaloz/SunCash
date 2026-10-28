@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SunCash.Domain.Time;
@@ -10,14 +9,14 @@ namespace SunCash.Infrastructure.DbBackup;
 /// <summary>
 /// Job <c>db-backup</c>: una copia coerente del database al giorno con <c>VACUUM INTO</c> (mai una
 /// copia del file a database aperto), e le copie più vecchie di <see cref="BackupOptions.KeepDays"/>
-/// cancellate. Gira nel processo dell'app, che è l'unico a scrivere sul file.
+/// cancellate. Gira nel processo dell'app, che è l'unico a scrivere sul file. La copia si scrive
+/// prima nella cartella temporanea locale e poi si sposta nella cartella dei backup: così SQLite non
+/// apre mai un file su un disco di rete (su Azure la cartella dei backup è Azure Files).
 /// </summary>
 public sealed class DatabaseBackupJob(SunCashDbContext db, IOptions<BackupOptions> options, TimeProvider clock) : ISyncJob
 {
     /// <summary>Nome del job.</summary>
     public const string JobName = "db-backup";
-
-    private const string Prefix = "suncash-";
 
     /// <inheritdoc />
     public string Name => JobName;
@@ -31,17 +30,21 @@ public sealed class DatabaseBackupJob(SunCashDbContext db, IOptions<BackupOption
 
         Directory.CreateDirectory(directory);
         var today = ItalianTime.LocalDate(clock.GetUtcNow());
-        var target = Path.Combine(directory, $"{Prefix}{today:yyyyMMdd}.db");
-        if (File.Exists(target))
-            File.Delete(target); // VACUUM INTO non sovrascrive
-
-        await db.Database.ExecuteSqlAsync($"VACUUM INTO {target}", ct);
+        var local = Path.Combine(Path.GetTempPath(), $"suncash-backup-{Guid.NewGuid():N}.db");
+        try
+        {
+            await db.Database.ExecuteSqlAsync($"VACUUM INTO {local}", ct);
+            File.Copy(local, BackupFiles.PathFor(directory, today), overwrite: true);
+        }
+        finally
+        {
+            File.Delete(local);
+        }
 
         var oldest = today.AddDays(-options.Value.KeepDays + 1);
-        foreach (var file in Directory.EnumerateFiles(directory, $"{Prefix}*.db"))
-            if (DateOnly.TryParseExact(Path.GetFileNameWithoutExtension(file)[Prefix.Length..], "yyyyMMdd",
-                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) && day < oldest)
-                File.Delete(file);
+        foreach (var (day, path) in BackupFiles.List(directory))
+            if (day < oldest)
+                File.Delete(path);
 
         return SyncOutcome.Done();
     }

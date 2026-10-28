@@ -8,6 +8,9 @@ COPY . .
 RUN npx ng build --configuration production
 
 FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# L'immagine nginx sostituisce le variabili d'ambiente nei file di /etc/nginx/templates all'avvio.
+# API_UPSTREAM: suncash-api:8080 nel compose, localhost:8080 su Azure (stessa app, stessa rete).
+ENV API_UPSTREAM=suncash-api:8080
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /web/dist/suncash-web/browser /usr/share/nginx/html
 EXPOSE 80

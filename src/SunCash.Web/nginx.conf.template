@@ -4,7 +4,7 @@ server {
 
   # L'API sta in un altro container; il browser parla solo con questo.
   location /api/ {
-    proxy_pass http://suncash-api:8080;
+    proxy_pass http://${API_UPSTREAM};
     proxy_set_header Host $host;
     proxy_read_timeout 600s; # l'avvio manuale di un job può durare minuti
   }
