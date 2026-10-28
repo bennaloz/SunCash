@@ -1,0 +1,677 @@
+[
+{
+"FlowDate": 20261025,
+"Hour": 1,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 101.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 2,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 102.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 3,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 103.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 4,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 104.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 5,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 105.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 6,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 106.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 7,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 107.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 8,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 108.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 9,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 109.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 10,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 110.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 11,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 111.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 12,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 112.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 13,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 113.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 14,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 114.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 15,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 115.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 16,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 116.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 17,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 117.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 18,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 118.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 19,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 119.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 20,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 120.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 21,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 121.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 22,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 122.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 23,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 123.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 24,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 124.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 25,
+"Period": null,
+"Market": "MGP",
+"Zone": "NORD",
+"Price": 125.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 1,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 91.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 2,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 92.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 3,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 93.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 4,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 94.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 5,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 95.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 6,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 96.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 7,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 97.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 8,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 98.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 9,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 99.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 10,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 100.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 11,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 101.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 12,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 102.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 13,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 103.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 14,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 104.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 15,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 105.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 16,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 106.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 17,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 107.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 18,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 108.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 19,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 109.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 20,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 110.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 21,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 111.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 22,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 112.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 23,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 113.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 24,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 114.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 25,
+"Period": null,
+"Market": "MGP",
+"Zone": "SUD",
+"Price": 115.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 1,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 111.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 2,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 112.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 3,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 113.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 4,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 114.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 5,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 115.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 6,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 116.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 7,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 117.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 8,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 118.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 9,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 119.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 10,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 120.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 11,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 121.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 12,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 122.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 13,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 123.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 14,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 124.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 15,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 125.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 16,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 126.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 17,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 127.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 18,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 128.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 19,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 129.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 20,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 130.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 21,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 131.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 22,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 132.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 23,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 133.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 24,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 134.0,
+"Notes": null
+},
+{
+"FlowDate": 20261025,
+"Hour": 25,
+"Period": null,
+"Market": "MGP",
+"Zone": "PUN",
+"Price": 135.0,
+"Notes": null
+}
+]
