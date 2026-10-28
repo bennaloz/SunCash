@@ -14,7 +14,7 @@ I numeri sono una stima: il GSE liquida sulle misure del distributore, non su qu
 
 ## Sviluppo
 
-Serve l'SDK .NET 10.
+Servono l'SDK .NET 10 e Node 24.
 
 ```bash
 dotnet build
@@ -22,15 +22,23 @@ dotnet test
 ```
 
 Le credenziali (GME, fornitore di energia) non stanno mai nel repository: in sviluppo si usano
-`dotnet user-secrets`, in esecuzione le variabili d'ambiente.
+`dotnet user-secrets` nel progetto `src/SunCash.Api`, in esecuzione le variabili d'ambiente.
+Senza credenziali l'API non parte e dice quali campi mancano.
+
+```bash
+dotnet user-secrets --project src/SunCash.Api set "Gme:UserName" "<utente>"
+```
+
+Il frontend sta in [`src/SunCash.Web`](src/SunCash.Web/README.md).
 
 ## Avvio con Docker
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
-L'API risponde su `http://localhost:8080/api/health`.
+Prima di avviare, riempire `.env` con le credenziali. L'app risponde su `http://localhost:8080`.
 
 ## Licenza
 

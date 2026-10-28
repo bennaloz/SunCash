@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SunCash.Domain.Energy;
+using SunCash.Infrastructure.DbBackup;
 using SunCash.Infrastructure.Energy;
 using SunCash.Infrastructure.Energy.FusionSolar;
 using SunCash.Infrastructure.Gme;
@@ -31,6 +32,7 @@ public static class ServiceCollectionExtensions
             .Validate(o => EnergyProviders.Contains(o.Provider), $"Energy:Provider deve essere uno di: {string.Join(", ", EnergyProviders)}.")
             .ValidateOnStart();
         services.AddOptions<GmeOptions>().Bind(configuration.GetSection(GmeOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<BackupOptions>().Bind(configuration.GetSection(BackupOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
 
         services.AddDbContext<SunCashDbContext>(o => o.UseSqlite(
             configuration.GetConnectionString("SunCash") ?? throw new InvalidOperationException("Manca ConnectionStrings:SunCash.")));
@@ -43,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<GmeClient>();
         services.AddScoped<ISyncJob, GmePricesJob>();
         services.AddScoped<ISyncJob, EnergyImportJob>();
+        services.AddScoped<ISyncJob, DatabaseBackupJob>();
         services.AddSingleton<SyncJobRunner>();
 
         AddEnergyProvider(services, configuration);
@@ -63,12 +66,13 @@ public static class ServiceCollectionExtensions
     /// Le pianificazioni (docs/analisi.md, «Job di sincronizzazione»). GME: primo pomeriggio, con
     /// tentativi ogni 30 minuti finché escono i prezzi di domani. DA VERIFICARE: orario di
     /// pubblicazione degli esiti MGP. Energia: ogni ora al minuto 10; se il fornitore chiede di
-    /// rallentare si aspetta il ciclo successivo, mai un tentativo ravvicinato.
+    /// rallentare si aspetta il ciclo successivo, mai un tentativo ravvicinato. Backup: di notte.
     /// </summary>
     public static IReadOnlyList<SyncSchedule> Schedules { get; } =
     [
         new(GmePricesJob.JobName, "30 13 * * *", TimeSpan.FromMinutes(30)),
         new(EnergyImportJob.JobName, "10 * * * *", null),
+        new(DatabaseBackupJob.JobName, "17 3 * * *", null),
     ];
 
     /// <summary>I fornitori di energia disponibili, per nome di configurazione.</summary>

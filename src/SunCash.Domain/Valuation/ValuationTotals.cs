@@ -12,7 +12,8 @@ public sealed record ValuationTotals(
     int RowsWithoutExport,
     int RowsWithoutSavings,
     long ImportWh,
-    decimal ImportCostEur)
+    decimal ImportCostEur,
+    decimal? AverageZonalEurMwh)
 {
     /// <summary>Beneficio totale: valore dell'immesso più risparmio.</summary>
     public decimal BenefitEur => ExportValueEur + SavingsEur;
@@ -23,12 +24,16 @@ public sealed record ValuationTotals(
     /// </summary>
     public decimal? CapturedPriceEurMwh => ExportWh == 0 ? null : ExportValueEur / (ExportWh / 1_000_000m);
 
-    /// <summary>Somma le righe. Le righe senza dato contano come zero e si contano a parte, così
-    /// la dashboard può dire che un totale è incompleto.</summary>
+    /// <summary>
+    /// Somma le righe. La media del prezzo zonale è pesata sulla durata delle righe, così un'ora
+    /// valorizzata come blocco unico pesa quanto quattro quarti d'ora: è il termine di confronto del
+    /// prezzo catturato. Le righe senza dato contano come zero e si contano a parte, così
+    /// la dashboard può dire che un totale è incompleto.
+    /// </summary>
     public static ValuationTotals Of(IEnumerable<ValuationRow> rows)
     {
-        long export = 0, self = 0, import = 0;
-        decimal value = 0, savings = 0, importCost = 0;
+        long export = 0, self = 0, import = 0, pricedMinutes = 0;
+        decimal value = 0, savings = 0, importCost = 0, priceByMinutes = 0;
         int noExport = 0, noSavings = 0;
         foreach (var r in rows)
         {
@@ -38,8 +43,14 @@ public sealed record ValuationTotals(
             if (r.SavingsEur is { } s) savings += s; else noSavings++;
             import += r.ImportWh ?? 0;
             importCost += r.ImportCostEur ?? 0;
+            if (r.ZonalEurMwh is { } z)
+            {
+                priceByMinutes += z * r.Interval.Minutes;
+                pricedMinutes += r.Interval.Minutes;
+            }
         }
 
-        return new ValuationTotals(export, self, value, savings, noExport, noSavings, import, importCost);
+        return new ValuationTotals(export, self, value, savings, noExport, noSavings, import, importCost,
+            pricedMinutes == 0 ? null : priceByMinutes / pricedMinutes);
     }
 }

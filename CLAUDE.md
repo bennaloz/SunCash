@@ -63,7 +63,8 @@ src/SunCash.Domain/          tipi, calcolatore, fusi orari, fasce ARERA — NESS
 src/SunCash.Infrastructure/  EF Core (SQLite), client GME, parser
   Energy/<Fornitore>/        un fornitore di energia = una cartella che implementa IEnergySource
 src/SunCash.Api/             ASP.NET Core: endpoint + BackgroundService dei due job
-src/SunCash.Web/             Angular — nessuna logica di calcolo, nessuna conversione di fuso
+src/SunCash.Web/             Angular 21, Node 24 — nessuna logica di calcolo, nessuna conversione di fuso;
+                             colori e misure solo dai token di src/styles.css (chiaro e scuro, mobile ≤860px)
 tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su file) / Api
 ```
 
@@ -71,8 +72,12 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   al centesimo solo in presentazione), configurazione con `IOptions<T>` validate all'avvio.
 - I job scrivono solo dati grezzi; l'API li legge, li passa al calcolatore e scrive solo i dati manuali
   (`tariffs`, `bills`, `gse_payments`).
-- SQLite vuole **un solo processo che scrive** e **mai un file system di rete**: i job restano
-  nell'host dell'API, il volume è su disco locale.
+- SQLite vuole **un solo processo che scrive** e **mai un file system di rete**: i job (anche il
+  backup `db-backup`, con `VACUUM INTO`) restano nell'host dell'API, il volume è su disco locale.
+- Ogni job passa da `SyncJobRunner`: un'esecuzione alla volta, esito sempre in `sync_state`. Un job
+  nuovo implementa `ISyncJob` e aggiunge la sua riga in `ServiceCollectionExtensions.Schedules`.
+- ⚠️ Il `.gitignore` standard di .NET ignora le cartelle `Backup*/`: per questo il backup sta in
+  `DbBackup/`. Dopo aver creato una cartella, controllare con `git status` che sia davvero tracciata.
 - Le date in ingresso all'API sono in ora italiana (`yyyy-MM-dd`); le risposte portano il
   timestamp UTC **e** l'etichetta locale già calcolata.
 - **Fornitori di energia intercambiabili**: tutto ciò che è specifico di un fornitore (login,

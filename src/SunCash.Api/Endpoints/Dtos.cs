@@ -45,13 +45,14 @@ public sealed record TotalsDto(
     decimal BenefitEur,
     decimal ImportCostEur,
     decimal? CapturedPriceEurMwh,
+    decimal? AverageZonalEurMwh,
     bool Incomplete,
     bool SavingsUnavailable)
 {
     /// <summary>Dai totali di dominio.</summary>
     public static TotalsDto From(ValuationTotals t) => new(
         t.ExportWh / 1000m, t.SelfConsumptionWh / 1000m, t.ImportWh / 1000m, t.ExportValueEur, t.SavingsEur,
-        t.BenefitEur, t.ImportCostEur, t.CapturedPriceEurMwh, t.RowsWithoutExport > 0, t.RowsWithoutSavings > 0);
+        t.BenefitEur, t.ImportCostEur, t.CapturedPriceEurMwh, t.AverageZonalEurMwh, t.RowsWithoutExport > 0, t.RowsWithoutSavings > 0);
 }
 
 /// <summary>Totali con l'etichetta del periodo.</summary>

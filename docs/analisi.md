@@ -484,9 +484,14 @@ Ogni fornitore ha la sua sezione sotto `Energy`, validata solo se è quello atti
 
 ### Deploy
 
-Un `docker-compose.yml` con due servizi: `suncash-api` (che ospita anche i job e monta un volume `/data` con il file SQLite) e `suncash-web` (Angular servito da nginx, che inoltra `/api` all'API). Va bene su un mini PC o un NAS di casa. Per vederla da fuori casa basta una VPN come Tailscale, senza esporre porte.
+Un `docker-compose.yml` con due servizi: `suncash-api` (che ospita anche i job e monta un volume `/data` con il file SQLite e la cartella `./backups`) e `suncash-web` (Angular servito da nginx sulla porta 8080, che inoltra `/api` all'API). I segreti stanno in un file `.env` accanto al compose, copiato da `.env.example` e ignorato da git. Va bene su un mini PC o un NAS di casa. Per vederla da fuori casa basta una VPN come Tailscale, senza esporre porte.
 
-Il backup giornaliero è una copia coerente del file fatta da SQLite stesso (`VACUUM INTO` o l'API di backup), mai una copia del file a database aperto.
+```bash
+cp .env.example .env   # e riempire i valori
+docker compose up -d --build
+```
+
+Il backup giornaliero è il terzo job dell'app, `db-backup`, alle 03:17: una copia coerente fatta da SQLite stesso con `VACUUM INTO`, mai una copia del file a database aperto. Le copie vanno in `Backup:Directory` (nel compose `./backups`) e si tengono per `Backup:KeepDays` giorni (predefinito 14). Stare nel processo dell'app tiene un solo scrittore sul file e mette l'esito del backup nella pagina «Stato» come gli altri job. Le copie in `./backups` vanno poi portate fuori dalla macchina (disco esterno, cloud) con lo strumento che si preferisce: un backup sullo stesso disco non protegge da un guasto del disco.
 
 In alternativa: una piccola VM in cloud con il volume su disco locale. SQLite non va messo su un file system di rete (Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Per un uso personale l'hosting di casa basta.
 
@@ -525,14 +530,28 @@ Decisioni aperte:
 
 Il lavoro si divide in nove milestone, ognuna chiusa da un criterio verificabile. Questo documento è `docs/analisi.md`; il `CLAUDE.md` alla radice lo riassume e lo cita.
 
+Stato al 2026-10-28 (PR bennaloz/SunCash#1):
+
+| Milestone | Codice | Criterio |
+| --- | --- | --- |
+| 1. Scheletro | ✅ | ✅ CI verde. Secret scanning e push protection: da attivare nelle impostazioni del repo |
+| 2. Dominio e calcolo | ✅ | ✅ test su 92/96/100 quarti, ricaduta oraria, fasce e festivi, tre offerte, batteria |
+| 3. Client GME | ✅ | ✅ su fixture sintetica e database di test; ⏳ file reale in locale, dopo le credenziali |
+| 4. Fornitori e FusionSolar | ✅ | ✅ fornitore finto, server finto per sessione scaduta e frequenza eccessiva |
+| 5. Persistenza e valorizzazione | ✅ | ✅ totali dal database = calcolatore in memoria, tre offerte |
+| 6. API | ✅ | ✅ giorno normale, giorni del cambio d'ora, cambio di offerta a metà mese |
+| 7. Frontend | ✅ | ⏳ provato con dati sintetici; con dati reali dopo le credenziali |
+| 8. Deploy | ✅ | ⏳ immagini costruite in CI; la settimana sul server di casa resta da fare |
+| 9. Confronto con la realtà | — | ⏳ servono mesi di dati reali |
+
 1. **Scheletro.** Solution .NET con i progetti descritti in Architettura, `docker-compose.yml` con il volume per SQLite, build e test in CI (GitHub Actions). Fatto quando `dotnet test` passa in CI su una solution vuota e il repo ha .gitignore, LICENSE, secret scanning e push protection. Il progetto Angular `SunCash.Web` nasce con la milestone 7, per non scaffoldarlo mesi prima di usarlo.
 2. **Dominio e calcolo.** Tipi `Interval`, `EnergyReading`, `MarketPrice`, `Tariff`, il calcolatore di valore e risparmio (con il bilancio della batteria), la conversione ora italiana/UTC, il calendario con le fasce ARERA e i festivi. Nessuna dipendenza esterna. Fatto quando passano i test sui giorni da 92, 96 e 100 quarti d'ora, sul ricadere al prezzo orario, sulle fasce nei festivi e sui tre tipi di offerta.
 3. **Client GME.** Login, `RequestData`, decompressione dello zip, parser, job `gme-prices` con upsert. Fatto quando il parser passa sulla fixture sintetica (e, in locale, su un file reale) e il job importa un giorno su un database SQLite di test.
 4. **Fornitori di energia e FusionSolar.** Contratto `IEnergySource`, job `energy-import` indipendente dal fornitore, backfill; poi l'implementazione FusionSolar con login e token in memoria, limitatore per endpoint e gestione di `failCode`. Fatto quando il job passa con un fornitore finto in memoria e i test FusionSolar con un server finto (WireMock.Net) coprono sessione scaduta e frequenza eccessiva.
 5. **Persistenza e valorizzazione.** Migrazioni EF Core, upsert dei dati grezzi, servizio che legge un periodo e lo passa al calcolatore, aggregazioni per ora, giorno e mese. Fatto quando, su un database SQLite di prova, i totali del servizio coincidono con quelli del calcolatore applicato agli stessi dati in memoria, per i tre tipi di offerta.
 6. **API.** Endpoint della sezione API REST, con OpenAPI. Fatto quando i test di integrazione coprono un giorno normale, uno del cambio d'ora e un cambio di tariffa a metà mese.
-7. **Frontend.** Le sei schermate in Angular. Fatto quando la dashboard mostra dati reali importati da entrambe le fonti e una tariffa reale.
-8. **Deploy.** Immagini Docker, compose di produzione, backup giornaliero del file SQLite. Fatto quando l'app gira sul server di casa e i job girano da soli per una settimana senza errori.
+7. **Frontend.** Le sei schermate in Angular (in `src/SunCash.Web`, Angular 21 con Node 24). Fatto quando la dashboard mostra dati reali importati da entrambe le fonti e una tariffa reale.
+8. **Deploy.** Immagini Docker, compose di produzione, backup giornaliero del file SQLite (job `db-backup`). Fatto quando l'app gira sul server di casa e i job girano da soli per una settimana senza errori.
 9. **Confronto con la realtà.** Primo confronto fra stima e pagamenti GSE, e fra bolletta stimata e bollette reali. Fatto quando lo scarto misurato è scritto in questo documento.
 
 Modbus locale come secondo fornitore e l'inserimento dell'offerta da codice offerta o da PDF si pianificano dopo la prima settimana di dati reali.

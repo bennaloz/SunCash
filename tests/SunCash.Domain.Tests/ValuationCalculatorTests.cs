@@ -255,3 +255,18 @@ public class ImportCostTests
         Assert.Equal(500, ValuationTotals.Of([row]).ImportWh);
     }
 }
+
+public class ValuationTotalsTests
+{
+    [Fact]
+    public void La_media_zonale_pesa_un_ora_quanto_quattro_quarti_d_ora()
+    {
+        var t0 = new DateTimeOffset(2026, 6, 17, 10, 0, 0, TimeSpan.Zero);
+        ValuationRow Row(int minutes, decimal price) => new(new Interval(t0, minutes), Resolution.Quarter, new DateOnly(2026, 6, 17),
+            "12:00", TariffBand.F1, 0, price, null, 0, null, null, SelfConsumptionBasis.Unavailable, null, null, null, null);
+
+        var totals = ValuationTotals.Of([Row(60, 100m), Row(15, 200m)]);
+
+        Assert.Equal((100m * 60 + 200m * 15) / 75, totals.AverageZonalEurMwh);
+    }
+}

@@ -484,6 +484,7 @@ $RECYCLE.BIN/
 # --- SunCash: niente segreti, dati dell'impianto o database nel repo (CLAUDE.md) ---
 .env
 .env.*
+!.env.example
 appsettings.*.local.json
 *.db
 *.db-wal
@@ -492,5 +493,7 @@ appsettings.*.local.json
 *.bak
 *.backup
 backups/
+.angular/
+dist/
 tests/fixtures.local/
 node_modules/

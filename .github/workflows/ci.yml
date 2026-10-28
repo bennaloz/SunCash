@@ -21,9 +21,26 @@ jobs:
       - run: dotnet build --no-restore -c Release
       - run: dotnet test --no-build -c Release
 
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/SunCash.Web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/SunCash.Web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx ng build --configuration production
+
   docker:
-    name: Immagine API
+    name: Immagini Docker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f src/SunCash.Api/Dockerfile -t suncash-api:ci .
+      - run: docker build -t suncash-web:ci src/SunCash.Web
