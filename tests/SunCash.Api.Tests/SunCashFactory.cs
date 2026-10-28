@@ -14,6 +14,9 @@ public sealed class SunCashFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"suncash-api-{Guid.NewGuid():N}.db");
 
+    /// <summary>Cartella da servire come wwwroot (il frontend pubblicato), se il test la vuole.</summary>
+    public string? WebRoot { get; init; }
+
     /// <summary>Orologio dell'app, spostabile dal test.</summary>
     public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 10, 28, 11, 0, 0, TimeSpan.Zero));
 
@@ -21,6 +24,8 @@ public sealed class SunCashFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:SunCash", $"Data Source={_dbPath};Pooling=False");
+        if (WebRoot is not null)
+            builder.UseWebRoot(WebRoot);
         builder.UseSetting("Sync:Enabled", "false");
         builder.UseSetting("Sync:StartDate", "2026-01-01");
         builder.UseSetting("Valuation:Zone", "NORD");

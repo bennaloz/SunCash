@@ -16,10 +16,9 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Ad
 
 var app = builder.Build();
 
-DatabaseRestore.RestoreIfMissing(
-    builder.Configuration.GetConnectionString("SunCash")!,
-    builder.Configuration[$"{BackupOptions.Section}:Directory"],
-    app.Logger);
+var connectionString = DatabaseLocation.ConnectionString(builder.Configuration);
+DatabaseLocation.EnsureDirectory(connectionString);
+DatabaseRestore.RestoreIfMissing(connectionString, DatabaseLocation.BackupDirectory(builder.Configuration), app.Logger);
 
 using (var scope = app.Services.CreateScope())
 {
@@ -34,6 +33,12 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapValuationEndpoints();
 app.MapManualDataEndpoints();
 app.MapSyncEndpoints();
+
+// Il frontend Angular, quando è pubblicato in wwwroot (App Service): ogni rotta che non è /api
+// torna a index.html, così i link diretti (/calendario, /giorno/…) funzionano.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/).*$)}", "index.html");
 
 app.Run();
 
