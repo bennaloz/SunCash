@@ -8,29 +8,39 @@ namespace SunCash.Domain.Valuation;
 
 /// <summary>
 /// Calcolatore di riferimento del valore dell'energia immessa e del risparmio da autoconsumo
-/// (docs/analisi.md, «Regole di calcolo»). Le view del database applicano le stesse regole e i
-/// loro totali devono coincidere con questi.
+/// (docs/analisi.md, «Regole di calcolo»). È l'unico posto dove si calcola: niente view SQL che
+/// ripetono la regola (deciso il 2026-10-28).
 /// </summary>
 public static class ValuationCalculator
 {
     /// <summary>
     /// Le righe di un giorno italiano. Per ogni ora: quattro righe a 15 minuti se i dati fini
-    /// coprono tutti i quarti d'ora, altrimenti una riga oraria se c'è il dato orario, altrimenti
-    /// quattro righe a 15 minuti senza energia (il buco si vede invece di sparire).
+    /// coprono tutti i quarti d'ora, altrimenti una riga oraria se c'è il dato orario. Un'ora senza
+    /// dati resta come buco senza energia (si vede invece di sparire), alla granularità del giorno:
+    /// una riga oraria se il giorno ha solo dati orari, quattro a 15 minuti negli altri casi.
     /// </summary>
     public static IReadOnlyList<ValuationRow> ForDay(ValuationInput input)
     {
         var tariff = Validity.At(input.Tariffs, t => t.ValidFrom, input.Day);
         var charges = Validity.At(input.RegulatedCharges, c => c.ValidFrom, input.Day);
         var rows = new List<ValuationRow>(100);
+        var slotsOfDay = TimeSlotCalendar.ForDay(input.Day);
+        var dayStart = slotsOfDay[0].StartUtc;
+        var dayEnd = slotsOfDay[^1].Interval.EndUtc;
+        var inDay = input.Readings.Where(r => r.Interval.StartUtc >= dayStart && r.Interval.StartUtc < dayEnd).ToList();
+        var onlyHourly = inDay.Count > 0 && inDay.All(r => r.Interval.Minutes == 60);
 
-        foreach (var hour in TimeSlotCalendar.ForDay(input.Day).GroupBy(s => ItalianTime.HourStartUtc(s.StartUtc)))
+        foreach (var hour in slotsOfDay.GroupBy(s => ItalianTime.HourStartUtc(s.StartUtc)))
         {
             var slots = hour.ToList();
             var fine = slots.Select(s => FineReadings(input.Readings, s.Interval)).ToList();
             var hourly = input.Readings.Where(r => r.Interval.Minutes == 60 && r.Interval.StartUtc == hour.Key).ToList();
 
-            if (fine.All(Covers) || hourly.Count == 0)
+            if (hourly.Count == 0 && onlyHourly)
+            {
+                rows.Add(Row(input, tariff, charges, slots[0], new Interval(hour.Key, 60), Resolution.Hour, null));
+            }
+            else if (fine.All(Covers) || hourly.Count == 0)
             {
                 for (var i = 0; i < slots.Count; i++)
                 {

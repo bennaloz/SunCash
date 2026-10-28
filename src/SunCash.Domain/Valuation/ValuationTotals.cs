@@ -13,16 +13,18 @@ public sealed record ValuationTotals(
     int RowsWithoutSavings,
     long ImportWh,
     decimal ImportCostEur,
-    decimal? AverageZonalEurMwh)
+    decimal? AverageZonalEurMwh,
+    long ValuedExportWh)
 {
     /// <summary>Beneficio totale: valore dell'immesso più risparmio.</summary>
     public decimal BenefitEur => ExportValueEur + SavingsEur;
 
     /// <summary>
-    /// Prezzo medio ponderato catturato dall'immesso in €/MWh (valore / energia), o <c>null</c> se
-    /// non è stato immesso nulla.
+    /// Prezzo medio ponderato catturato dall'immesso in €/MWh (valore / energia), contando solo
+    /// l'energia che ha un valore, o <c>null</c> se non ce n'è: senza prezzi il prezzo catturato è
+    /// sconosciuto, non zero.
     /// </summary>
-    public decimal? CapturedPriceEurMwh => ExportWh == 0 ? null : ExportValueEur / (ExportWh / 1_000_000m);
+    public decimal? CapturedPriceEurMwh => ValuedExportWh == 0 ? null : ExportValueEur / (ValuedExportWh / 1_000_000m);
 
     /// <summary>
     /// Somma le righe. La media del prezzo zonale è pesata sulla durata delle righe, così un'ora
@@ -32,14 +34,14 @@ public sealed record ValuationTotals(
     /// </summary>
     public static ValuationTotals Of(IEnumerable<ValuationRow> rows)
     {
-        long export = 0, self = 0, import = 0, pricedMinutes = 0;
+        long export = 0, valuedExport = 0, self = 0, import = 0, pricedMinutes = 0;
         decimal value = 0, savings = 0, importCost = 0, priceByMinutes = 0;
         int noExport = 0, noSavings = 0;
         foreach (var r in rows)
         {
             export += r.ExportWh ?? 0;
             self += r.SelfConsumptionWh ?? 0;
-            if (r.ExportValueEur is { } v) value += v; else noExport++;
+            if (r.ExportValueEur is { } v) { value += v; valuedExport += r.ExportWh ?? 0; } else noExport++;
             if (r.SavingsEur is { } s) savings += s; else noSavings++;
             import += r.ImportWh ?? 0;
             importCost += r.ImportCostEur ?? 0;
@@ -51,6 +53,6 @@ public sealed record ValuationTotals(
         }
 
         return new ValuationTotals(export, self, value, savings, noExport, noSavings, import, importCost,
-            pricedMinutes == 0 ? null : priceByMinutes / pricedMinutes);
+            pricedMinutes == 0 ? null : priceByMinutes / pricedMinutes, valuedExport);
     }
 }

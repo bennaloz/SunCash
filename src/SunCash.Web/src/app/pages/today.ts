@@ -29,6 +29,9 @@ import { addDays, fmtEur, fmtEurMwh, fmtKwh, longDate, todayIt, token } from '..
           <div class="card tile self"><h2>Risparmio da autoconsumo</h2><div class="figure">{{ eur(d.totals.savingsEur) }}</div>
             <div class="sub">{{ kwh(d.totals.selfConsumptionKwh) }} consumati in casa</div></div>
         </div>
+        @if (missingPrices()) {
+          <div class="notice warn">Mancano i prezzi GME in alcuni intervalli: lì l'energia immessa non ha un valore. Vedi «Stato».</div>
+        }
         @if (d.totals.incomplete) { <div class="notice warn">Mancano dati in alcuni intervalli del giorno: il totale è parziale.</div> }
         @if (d.totals.savingsUnavailable) {
           <div class="notice warn">Il risparmio non è calcolato in alcuni intervalli: manca l'offerta luce, la parte regolata o il consumo della casa. Vedi «Bollette» e «Stato».</div>
@@ -67,6 +70,7 @@ export class TodayPage {
   protected readonly summary = signal<Summary | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly title = computed(() => (this.day() === this.today ? 'Oggi' : longDate(this.day())));
+  protected readonly missingPrices = computed(() => this.data()?.rows.some(r => r.exportKwh != null && r.zonalEurMwh == null) ?? false);
   protected readonly hasHourly = computed(() => this.data()?.rows.some(r => r.resolution === 'Hour') ?? false);
 
   protected readonly eur = fmtEur;
