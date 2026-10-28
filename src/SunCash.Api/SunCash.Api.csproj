@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Credenziali in sviluppo: dotnet user-secrets, mai nel repo. -->
+    <UserSecretsId>7d8ce1b8-1c2b-4083-971e-d52822447c69</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SunCash.Infrastructure\SunCash.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

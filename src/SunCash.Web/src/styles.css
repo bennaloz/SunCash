@@ -1,0 +1,127 @@
+/* Token grafici di SunCash: ogni colore, raggio e dimensione si definisce qui, mai nei componenti. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --surface-2: #eef1ec;
+  --text: #1c2420;
+  --text-muted: #5b6862;
+  --border: #dbe1dc;
+  --accent: #e8a317;        /* sole: l'unico accento pieno */
+  --accent-text: #1c2420;
+  --export: #e8a317;        /* energia immessa e il suo valore */
+  --self: #2f9e72;          /* autoconsumo e risparmio */
+  --price: #4a6fa5;         /* prezzi di mercato */
+  --warn-bg: #fff4d6;
+  --warn-text: #6b4e00;
+  --error-bg: #fde4e1;
+  --error-text: #8a1c12;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --gap: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-small: 0.85rem;
+  --fs-body: 1rem;
+  --fs-title: 1.35rem;
+  --fs-figure: 1.6rem;
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121614;
+    --surface: #1b211e;
+    --surface-2: #232b27;
+    --text: #e7ece9;
+    --text-muted: #9aa7a0;
+    --border: #2e3833;
+    --accent: #f0b232;
+    --export: #f0b232;
+    --self: #46b98b;
+    --price: #7d9fd3;
+    --warn-bg: #3a2f10;
+    --warn-text: #f5d98a;
+    --error-bg: #3d1915;
+    --error-text: #f4b0a8;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+}
+
+h1 { font-size: var(--fs-title); margin: 0; }
+h2 { font-size: var(--fs-body); margin: 0 0 8px; color: var(--text-muted); font-weight: 600; }
+
+a { color: inherit; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: var(--gap); display: grid; gap: var(--gap); }
+.page > * { min-width: 0; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.toolbar h1 { flex: 1 1 auto; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+  box-shadow: var(--shadow);
+}
+
+.tiles { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.tile .figure { font-size: var(--fs-figure); font-weight: 700; }
+.tile .sub { color: var(--text-muted); font-size: var(--fs-small); }
+.tile.export .figure { color: var(--export); }
+.tile.self .figure { color: var(--self); }
+
+.notice { border-radius: var(--radius-sm); padding: 8px 12px; font-size: var(--fs-small); }
+.notice.warn { background: var(--warn-bg); color: var(--warn-text); }
+.notice.error { background: var(--error-bg); color: var(--error-text); }
+
+button, .button {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.toolbar .day-picker { width: auto; }
+
+input, select {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+
+form.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); align-items: end; margin-top: 12px; }
+label { display: grid; gap: 4px; font-size: var(--fs-small); color: var(--text-muted); }
+
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+
+.chart { width: 100%; height: 340px; }
+.muted { color: var(--text-muted); font-size: var(--fs-small); }
+
+@media (max-width: 860px) {
+  .page { padding: 12px; padding-bottom: 80px; }
+  .chart { height: 280px; }
+}

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SunCash.Api/SunCash.Api.csproj" />
+    <Project Path="src/SunCash.Domain/SunCash.Domain.csproj" />
+    <Project Path="src/SunCash.Infrastructure/SunCash.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SunCash.Api.Tests/SunCash.Api.Tests.csproj" />
+    <Project Path="tests/SunCash.Domain.Tests/SunCash.Domain.Tests.csproj" />
+    <Project Path="tests/SunCash.Infrastructure.Tests/SunCash.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

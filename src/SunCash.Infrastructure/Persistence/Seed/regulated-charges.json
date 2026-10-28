@@ -1,0 +1,4 @@
+{
+  "_nota": "Parte regolata ARERA del prezzo variabile della bolletta, clienti domestici residenti. Dati pubblici, aggiornati a ogni trimestre con un commit. DA VERIFICARE (docs/analisi.md, «Prezzo della bolletta»): quota variabile per kWh di trasporto e oneri di sistema dalle tabelle ARERA, accise dall'Agenzia delle Dogane. Finché l'elenco è vuoto il risparmio da autoconsumo non si calcola e la dashboard lo dice. Formato di una riga: { \"validFrom\": \"2026-10-01\", \"networkEurKwh\": 0.0, \"exciseEurKwh\": 0.0, \"vatRate\": 0.10 }",
+  "charges": []
+}

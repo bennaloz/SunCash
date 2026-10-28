@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Nessuna dipendenza: né pacchetti né altri progetti (vedi CLAUDE.md, guardia in
+       SunCash.Domain.Tests/DomainSenzaDipendenzeTests). -->
+
+</Project>
