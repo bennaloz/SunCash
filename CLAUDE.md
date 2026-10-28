@@ -18,7 +18,8 @@ se serve, questo riassunto — mai il contrario, così i due testi non si contra
 - **Dati dell'impianto**: niente `stationCode`, nome impianto, indirizzo, coordinate, numeri di
   serie, potenza installata — né in codice, né in test, né in screenshot. Gli esempi usano
   segnaposto (`<segreto>`, `<prefisso>`).
-- **Tariffe reali della bolletta**: vivono nel database, inserite dall'app; nel repo solo esempi.
+- **Offerta luce e bollette reali**: vivono nel database, inserite dall'app; nel repo solo esempi.
+  La parte regolata ARERA (`regulated_charges`) invece è pubblica e sta nel repo.
 - **Fixture dei fornitori di energia**: anonimizzate (codici sostituiti, valori alterati, struttura identica).
 - **Fixture GME**: sintetiche, nel formato reale. I dati GME non si ridistribuiscono.
 - **File reali**: solo in `tests/fixtures.local/` (ignorata da git); i test che li usano sono
@@ -41,7 +42,9 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
   lo si ricava dal bilancio (prodotta + prelevata − immessa − carica + scarica), **mai** come
   prodotta − immessa; la riga dichiara la base usata. Il prezzo è solo la parte **variabile** della bolletta
   (energia, perdite, trasporto e oneri variabili, accise, IVA): le quote fisse non si evitano.
-  Le tariffe stanno in `tariffs` con data di validità, mai in configurazione.
+  Due tabelle con data di validità, mai in configurazione: `tariffs` (offerta dell'utente; oggi
+  modulo manuale, domani codice offerta ARERA o PDF — tutte le vie scrivono lì, colonna `origin`)
+  e `regulated_charges` (trasporto, oneri, accise, IVA: dati ARERA nel repo).
 - **Granularità**: dati a 5 minuti del meter → aggregati a 15 minuti con prezzo a 15 minuti;
   solo dato orario → prezzo orario, ora come blocco unico. Ogni riga dichiara la sua
   `Resolution` (`Quarter` | `Hour`).
@@ -67,7 +70,7 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 - .NET 10, SQLite (un file, WAL attivo, energia in Wh `INTEGER`, prezzi `REAL`, arrotondamento
   al centesimo solo in presentazione), configurazione con `IOptions<T>` validate all'avvio.
 - I job scrivono solo dati grezzi; l'API legge le view e scrive solo i dati manuali
-  (`tariffs`, `gse_payments`).
+  (`tariffs`, `bills`, `gse_payments`).
 - SQLite vuole **un solo processo che scrive** e **mai un file system di rete**: i job restano
   nell'host dell'API, il volume è su disco locale.
 - Le date in ingresso all'API sono in ora italiana (`yyyy-MM-dd`); le risposte portano il

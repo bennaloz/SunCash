@@ -43,7 +43,7 @@ Il codice sta in un repository GitHub pubblico, quindi nel repo non finiscono cr
 
 - **Segreti**: solo `dotnet user-secrets` e variabili d'ambiente. Il `.gitignore` esclude `.env`, `appsettings.*.local.json`, i file di database (`*.db`, `*.db-wal`, `*.db-shm`) e i file di backup. Su GitHub vanno attivati secret scanning e push protection.
 - **Dati dell'impianto**: niente `stationCode`, nomi impianto, indirizzi, coordinate, numeri di serie o potenza installata in codice, test, issue e screenshot. Le configurazioni di esempio usano solo segnaposto.
-- **Dati della bolletta**: le tariffe reali si inseriscono dall'app e vivono nel database; nel repo solo valori di esempio.
+- **Dati della bolletta**: offerta e bollette reali si inseriscono dall'app e vivono nel database; nel repo solo valori di esempio. La parte regolata (ARERA) invece è pubblica e sta nel repo.
 - **Fixture dei fornitori di energia**: anonimizzate, con codici sostituiti e valori alterati, ma struttura identica alla risposta reale.
 - **Fixture GME**: sintetiche, nello stesso formato dei file reali, perché i dati del GME non si possono ridistribuire.
 - **File reali**: solo in `tests/fixtures.local/`, ignorata da git. I test che li usano sono marcati e girano solo in locale.
@@ -175,10 +175,10 @@ T_q = \left( p^{en}_q \cdot (1 + \lambda) + p^{rete} + p^{acc} \right) \cdot (1 
 | Termine | Cosa è | Da dove |
 | --- | --- | --- |
 | `p^{en}_q` | Prezzo dell'energia dell'offerta nel quarto d'ora | Dipende dal tipo di offerta, sotto |
-| `λ` | Perdite di rete applicate all'energia | Bolletta; spesso 10,2% sulle offerte indicizzate, già incluse in quelle a prezzo fisso |
-| `p^{rete}` | Trasporto e oneri di sistema, quota variabile in €/kWh | Bolletta |
-| `p^{acc}` | Accise in €/kWh | Bolletta |
-| `iva` | Aliquota IVA | Bolletta (10% per uso domestico) |
+| `λ` | Perdite di rete applicate all'energia | Offerta; spesso 10,2% sulle offerte indicizzate, già incluse in quelle a prezzo fisso |
+| `p^{rete}` | Trasporto e oneri di sistema, quota variabile in €/kWh | Parte regolata ARERA, tabella `regulated_charges` |
+| `p^{acc}` | Accise in €/kWh | Parte regolata, tabella `regulated_charges` |
+| `iva` | Aliquota IVA | Parte regolata, tabella `regulated_charges` (10% per uso domestico) |
 
 Tipo di offerta (`kind`):
 
@@ -188,7 +188,24 @@ Tipo di offerta (`kind`):
 | `Fasce` | Prezzo F1, F2 o F3 secondo la fascia ARERA del quarto d'ora (festivi compresi) |
 | `IndicizzataPun` | PUN Index GME / 1000 + spread in €/kWh; il PUN è orario o media mensile secondo il contratto |
 
-Tutti i valori della bolletta stanno nella tabella `tariffs` con una data di inizio validità: quando cambia l'offerta si aggiunge una riga e lo storico continua a usare la tariffa del suo periodo. Tipo di offerta in essere e voci variabili della propria bolletta: `<DA VERIFICARE: ultima bolletta>`. Indicizzazione al PUN orario o mensile, se l'offerta è indicizzata: `<DA VERIFICARE: condizioni economiche del contratto>`.
+Il prezzo della bolletta ha due parti, che vivono in due tabelle diverse perché hanno origini diverse (decisione del 2026-10-28):
+
+- **parte regolata** (`regulated_charges`): trasporto e oneri variabili, accise, IVA. Le fissa ARERA, sono uguali per tutti i clienti domestici residenti e cambiano a trimestre. Sono dati pubblici: stanno **nel repo**, come dati iniziali del database, e si aggiornano con un commit. L'utente non inserisce nulla. Valori per trimestre e trattamento delle accise per i residenti: `<DA VERIFICARE: tabelle ARERA e Agenzia delle Dogane>`;
+- **offerta** (`tariffs`): il prezzo dell'energia e le perdite. È l'unico dato dell'utente e cambia solo con il contratto. Sta nel database, mai nel repo.
+
+Entrambe hanno una data di inizio validità: quando qualcosa cambia si aggiunge una riga e lo storico continua a usare i valori del suo periodo.
+
+#### Come si inserisce l'offerta
+
+Tre vie che scrivono tutte nella stessa tabella `tariffs`; la colonna `origin` dice da quale è arrivata la riga e la schermata la fa sempre rivedere prima di salvare.
+
+| Via | `origin` | Quando |
+| --- | --- | --- |
+| Modulo manuale: 1-3 numeri a ogni cambio di contratto | `Manual` | **Prima versione**, e fallback permanente delle altre due |
+| Codice offerta: l'app scarica i prezzi dagli open data del Portale Offerte ARERA | `OfferCode` | Dopo la prima versione. `<DA VERIFICARE: se il portale conserva le offerte non più in vendita>` |
+| PDF della bolletta letto da un modello AI, con conferma dell'utente | `BillPdf` | Dopo la prima versione. Manda la bolletta a un servizio esterno e costa qualche centesimo a bolletta |
+
+Le vie 2 e 3 sono estensioni: non cambiano tabella, calcolo né view, e quando falliscono resta il modulo. Tipo di offerta in essere: `<DA VERIFICARE: ultima bolletta>`. Indicizzazione al PUN orario o mensile, se l'offerta è indicizzata: `<DA VERIFICARE: condizioni economiche del contratto>`.
 
 ### Granularità
 
@@ -223,7 +240,7 @@ Un solo backend .NET ospita sia l'API sia i due job di import; il calcolo vive n
                                                 tariffe)
 ```
 
-I job scrivono solo dati grezzi con upsert; l'API non scrive misure né prezzi, legge le view di valutazione e scrive solo i dati inseriti a mano (tariffe, pagamenti GSE).
+I job scrivono solo dati grezzi con upsert; l'API non scrive misure né prezzi, legge le view di valutazione e scrive solo i dati inseriti a mano (offerte, bollette, pagamenti GSE).
 
 Struttura della solution (.NET 10, LTS):
 
@@ -305,10 +322,28 @@ CREATE TABLE tariffs (
     pun_spread_eur_kwh  REAL,              -- IndicizzataPun
     pun_basis           TEXT,              -- IndicizzataPun: 'Orario' | 'Mensile'
     losses_factor       REAL NOT NULL DEFAULT 0,   -- λ, es. 0.102
-    network_eur_kwh     REAL NOT NULL DEFAULT 0,   -- trasporto e oneri, quota variabile
-    excise_eur_kwh      REAL NOT NULL DEFAULT 0,
-    vat_rate            REAL NOT NULL,             -- es. 0.10
+    origin              TEXT NOT NULL,     -- 'Manual' | 'OfferCode' | 'BillPdf'
+    offer_code          TEXT,              -- codice offerta, se noto
     notes               TEXT
+);
+
+-- Parte regolata della bolletta: dati pubblici ARERA, caricati dal repo
+CREATE TABLE regulated_charges (
+    valid_from       TEXT PRIMARY KEY,  -- 'yyyy-MM-dd'; di solito inizio trimestre
+    network_eur_kwh  REAL NOT NULL,     -- trasporto e oneri di sistema, quota variabile
+    excise_eur_kwh   REAL NOT NULL,
+    vat_rate         REAL NOT NULL      -- es. 0.10
+);
+
+-- Bollette reali inserite a mano, per verificare il modello della tariffa
+CREATE TABLE bills (
+    period_from  TEXT NOT NULL,         -- 'yyyy-MM-dd' ora italiana
+    period_to    TEXT NOT NULL,         -- incluso
+    import_kwh   REAL,                  -- prelievi fatturati
+    amount_eur   REAL NOT NULL,         -- totale bolletta
+    origin       TEXT NOT NULL,         -- 'Manual' | 'BillPdf'
+    notes        TEXT,
+    PRIMARY KEY (period_from, period_to)
 );
 
 -- Prezzo minimo garantito per anno
@@ -385,7 +420,8 @@ L'API ASP.NET Core espone solo letture sulle view di valorizzazione, più le poc
 | `GET /api/summary` | Oggi, ieri, mese corrente, anno corrente, miglior giorno, con le due voci e il totale |
 | `GET /api/sync/status` | Stato dei job da `sync_state`, fornitore attivo e intervalli mancanti |
 | `POST /api/sync/{job}/run` | Avvio manuale di un job, utile durante il backfill |
-| `GET /api/tariffs` · `PUT /api/tariffs/{validFrom}` | Elenco e inserimento o correzione di una tariffa |
+| `GET /api/tariffs` · `PUT /api/tariffs/{validFrom}` | Elenco e inserimento o correzione di un'offerta |
+| `GET /api/bills` · `PUT /api/bills/{periodFrom}/{periodTo}` | Bollette reali con accanto la bolletta stimata (prelievi × tariffa) |
 | `PUT /api/gse-payments/{month}` | Inserimento o correzione di un pagamento GSE |
 
 Le date nei parametri sono in ora italiana (`yyyy-MM-dd`); l'API le converte in intervalli UTC. Le risposte riportano il timestamp in UTC e l'etichetta locale già calcolata, così il frontend non fa conversioni.
@@ -396,14 +432,14 @@ Le date nei parametri sono in ora italiana (`yyyy-MM-dd`); l'API le converte in 
 2. **Calendario**: mese a griglia con il beneficio di ogni giorno; un clic apre il dettaglio del giorno.
 3. **Andamento**: beneficio mensile dell'anno e cumulato, con le due voci separate e i pagamenti GSE affiancati quando presenti.
 4. **Prezzo catturato**: prezzo medio ponderato ottenuto dall'impianto contro media del prezzo zonale, per capire quanto pesa produrre nelle ore centrali.
-5. **Tariffe**: elenco delle offerte luce inserite, con i periodi di validità, e modulo per aggiungerne una.
+5. **Bollette**: offerte luce inserite con i periodi di validità e modulo per aggiungerne una; bollette reali affiancate a quelle stimate, per vedere se il modello della tariffa regge.
 6. **Stato**: esito dei job, fornitore attivo, intervalli mancanti, pulsante di sincronizzazione manuale.
 
 Grafici con una libreria già nota nello stack Angular (ad esempio ECharts tramite `ngx-echarts`). Il layout deve funzionare anche da telefono.
 
 ## Configurazione, segreti, deploy
 
-La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazione all'avvio). Nessuna credenziale va nel repository: in sviluppo stanno in `dotnet user-secrets`, in esecuzione nelle variabili d'ambiente del container. Le tariffe non sono configurazione: cambiano nel tempo e si inseriscono dall'app.
+La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazione all'avvio). Nessuna credenziale va nel repository: in sviluppo stanno in `dotnet user-secrets`, in esecuzione nelle variabili d'ambiente del container. Offerte e bollette non sono configurazione: cambiano nel tempo e si inseriscono dall'app.
 
 ```json
 {
@@ -458,14 +494,16 @@ Decisioni prese:
 - [x] Database: SQLite (2026-10-28)
 - [x] Energia letta da fornitori intercambiabili dietro `IEnergySource`; FusionSolar è il primo (2026-10-28)
 - [x] Valore dell'autoconsumo incluso nella prima versione (2026-10-28)
+- [x] Licenza AGPL-3.0: chi offre SunCash come servizio online deve pubblicarne il codice (2026-10-28)
+- [x] Offerta luce inserita con il modulo manuale; codice offerta ARERA e PDF della bolletta come estensioni successive, con il modulo come fallback (2026-10-28)
+- [x] Parte regolata della bolletta nel repo, aggiornata a trimestre (2026-10-28)
+- [x] Bollette reali inserite a mano e confrontate con la bolletta stimata (2026-10-28)
 - [x] L'impianto ha una batteria: consumo misurato o da bilancio, mai prodotta meno immessa (2026-10-28)
 
 Decisioni aperte:
 
-- [ ] Licenza del repository (ad esempio MIT)
 - [ ] Modbus locale come secondo fornitore nella prima versione o rinviato
 - [ ] Hosting: mini PC/NAS di casa o VM in cloud
-- [ ] Confronto del risparmio stimato con le bollette reali (tabella di bollette inserite a mano, come `gse_payments`) sì o no
 
 ## Piano di sviluppo per Claude Code
 
@@ -479,6 +517,6 @@ Il lavoro si divide in nove milestone, ognuna chiusa da un criterio verificabile
 6. **API.** Endpoint della sezione API REST, con OpenAPI. Fatto quando i test di integrazione coprono un giorno normale, uno del cambio d'ora e un cambio di tariffa a metà mese.
 7. **Frontend.** Le sei schermate in Angular. Fatto quando la dashboard mostra dati reali importati da entrambe le fonti e una tariffa reale.
 8. **Deploy.** Immagini Docker, compose di produzione, backup giornaliero del file SQLite. Fatto quando l'app gira sul server di casa e i job girano da soli per una settimana senza errori.
-9. **Confronto con la realtà.** Primo confronto fra stima e pagamenti GSE (e bollette, se la decisione aperta è presa). Fatto quando lo scarto misurato è scritto in questo documento.
+9. **Confronto con la realtà.** Primo confronto fra stima e pagamenti GSE, e fra bolletta stimata e bollette reali. Fatto quando lo scarto misurato è scritto in questo documento.
 
-Modbus locale come secondo fornitore si pianifica dopo la prima settimana di dati reali.
+Modbus locale come secondo fornitore e l'inserimento dell'offerta da codice offerta o da PDF si pianificano dopo la prima settimana di dati reali.
