@@ -1,9 +1,10 @@
 # Istruzioni di progetto — SunCash
 
-SunCash mostra quanto rende l'energia immessa in rete: kWh immessi letti da Huawei FusionSolar
-moltiplicati per il prezzo zonale MGP del GME nello stesso intervallo, per quarto d'ora, ora,
-giorno e mese. Un solo utente (il proprietario dell'impianto), un solo impianto, niente
-multi-tenant.
+SunCash mostra quanto rende l'impianto fotovoltaico, per quarto d'ora, ora, giorno e mese,
+sommando due voci: il **valore dell'energia immessa** (kWh immessi × prezzo zonale MGP del GME)
+e il **risparmio da autoconsumo** (kWh autoconsumati × prezzo variabile della bolletta). I dati
+dell'impianto arrivano da un fornitore intercambiabile (oggi Huawei FusionSolar). Un solo utente
+(il proprietario dell'impianto), un solo impianto, niente multi-tenant.
 
 **Source of truth: [`docs/analisi.md`](docs/analisi.md).** Questo file ne riassume le regole che
 valgono a ogni modifica e non le ripete per esteso: per formule, schema, endpoint e flussi delle
@@ -17,29 +18,36 @@ se serve, questo riassunto — mai il contrario, così i due testi non si contra
 - **Dati dell'impianto**: niente `stationCode`, nome impianto, indirizzo, coordinate, numeri di
   serie, potenza installata — né in codice, né in test, né in screenshot. Gli esempi usano
   segnaposto (`<segreto>`, `<prefisso>`).
-- **Fixture FusionSolar**: anonimizzate (codici sostituiti, valori alterati, struttura identica).
+- **Tariffe reali della bolletta**: vivono nel database, inserite dall'app; nel repo solo esempi.
+- **Fixture dei fornitori di energia**: anonimizzate (codici sostituiti, valori alterati, struttura identica).
 - **Fixture GME**: sintetiche, nel formato reale. I dati GME non si ridistribuiscono.
 - **File reali**: solo in `tests/fixtures.local/` (ignorata da git); i test che li usano sono
   marcati e girano solo in locale.
-- **Database e backup**: mai nel repo.
+- **Database e backup** (`*.db`, `*.db-wal`, `*.db-shm`): mai nel repo.
 
 Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di quanto sopra.
 
 ## Regole di dominio che non si negoziano
 
-- **Il valore in euro non si salva mai**: si salvano energia e prezzi grezzi, il valore lo
-  calcolano le view (`v_valuation_quarter` → `hour` → `day` → `month`). Un cambio di regola non
+- **Il valore in euro non si salva mai**: si salvano energia, prezzi e tariffe grezzi, valore e
+  risparmio li calcolano le view (`v_valuation_quarter` → `hour` → `day` → `month`). Un cambio di regola non
   richiede migrazioni di dati.
 - **Prezzo del calcolo = prezzo zonale MGP** della zona configurata (`Valuation:Zone`, nessuna
   zona cablata nel codice). Il **PUN** si importa solo come riferimento nei grafici, non entra
-  nel guadagno.
+  nel valore dell'immesso; serve al risparmio solo se l'offerta luce è indicizzata al PUN.
 - **Regime** (`RidZonale` | `RidPmg`) da configurazione; il PMG sta nella tabella
   `price_floors(year, eur_mwh)`, non in costanti.
+- **Autoconsumo** = consumo − prelievo (ricade su prodotta − immessa se il fornitore non dà il
+  consumo, e la riga lo dichiara). Il prezzo è solo la parte **variabile** della bolletta
+  (energia, perdite, trasporto e oneri variabili, accise, IVA): le quote fisse non si evitano.
+  Le tariffe stanno in `tariffs` con data di validità, mai in configurazione.
 - **Granularità**: dati a 5 minuti del meter → aggregati a 15 minuti con prezzo a 15 minuti;
   solo dato orario → prezzo orario, ora come blocco unico. Ogni riga dichiara la sua
   `Resolution` (`Quarter` | `Hour`).
-- **Tempo**: tutto in UTC nel database; conversioni con `TimeZoneInfo` `Europe/Rome`, **mai
-  offset fissi**. I giorni del cambio d'ora hanno 92 e 100 quarti d'ora e vanno testati.
+- **Tempo**: tutto in UTC nel database (epoch in secondi, `INTEGER`); conversioni con
+  `TimeZoneInfo` `Europe/Rome`, **mai offset fissi**. SQLite non conosce i fusi: data italiana,
+  etichetta locale e fascia ARERA le scrive **solo il dominio** nel calendario `time_slots`, e le
+  view leggono da lì. I giorni del cambio d'ora hanno 92 e 100 quarti d'ora e vanno testati.
 - **Costi fissi e corrispettivo GSE**: solo nel cumulato, mai nel valore orario.
 - **Import idempotenti**: ogni scrittura è un upsert sulla chiave primaria.
 - **I numeri sono una stima**: il GSE liquida sulle misure del distributore, non del meter.
@@ -47,20 +55,27 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
 ## Architettura in breve
 
 ```text
-src/SunCash.Domain/          tipi, calcolatore, fusi orari — NESSUNA dipendenza esterna
-src/SunCash.Infrastructure/  EF Core (Npgsql), client GME e FusionSolar, parser
+src/SunCash.Domain/          tipi, calcolatore, fusi orari, fasce ARERA — NESSUNA dipendenza esterna
+src/SunCash.Infrastructure/  EF Core (SQLite), client GME, parser
+  Energy/<Fornitore>/        un fornitore di energia = una cartella che implementa IEnergySource
 src/SunCash.Api/             ASP.NET Core: endpoint + BackgroundService dei due job
 src/SunCash.Web/             Angular — nessuna logica di calcolo, nessuna conversione di fuso
-tests/…                      Domain / Infrastructure (WireMock.Net, Testcontainers) / Api
+tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su file) / Api
 ```
 
-- .NET 10, PostgreSQL, configurazione con `IOptions<T>` validate all'avvio.
+- .NET 10, SQLite (un file, WAL attivo, energia in Wh `INTEGER`, prezzi `REAL`, arrotondamento
+  al centesimo solo in presentazione), configurazione con `IOptions<T>` validate all'avvio.
 - I job scrivono solo dati grezzi; l'API legge le view e scrive solo i dati manuali
-  (`gse_payments`).
+  (`tariffs`, `gse_payments`).
+- SQLite vuole **un solo processo che scrive** e **mai un file system di rete**: i job restano
+  nell'host dell'API, il volume è su disco locale.
 - Le date in ingresso all'API sono in ora italiana (`yyyy-MM-dd`); le risposte portano il
   timestamp UTC **e** l'etichetta locale già calcolata.
-- Le fonti esterne stanno dietro interfacce (es. `IEnergySource`: oggi cloud Northbound, domani
-  Modbus).
+- **Fornitori di energia intercambiabili**: tutto ciò che è specifico di un fornitore (login,
+  rate limit, codici d'errore, nomi dei campi) sta nella sua implementazione di `IEnergySource`.
+  Job `energy-import`, schema, view e API **non nominano mai un fornitore**: se serve farlo, il
+  contratto è sbagliato. Un fornitore attivo alla volta (`Energy:Provider`), opzioni sotto
+  `Energy:<Fornitore>`, misure distinte per `source`.
 
 ### Client esterni — vincoli che costano se ignorati
 
@@ -81,21 +96,22 @@ il valore è verificato si aggiorna l'analisi.
 
 ## Piano di lavoro
 
-Otto milestone, ognuna con il suo criterio di «fatto» in
+Nove milestone, ognuna con il suo criterio di «fatto» in
 [`docs/analisi.md` § Piano di sviluppo](docs/analisi.md#piano-di-sviluppo-per-claude-code):
 
-1. Scheletro · 2. Dominio e calcolo · 3. Client GME · 4. Client FusionSolar ·
-5. Persistenza e view · 6. API · 7. Frontend · 8. Deploy
+1. Scheletro · 2. Dominio e calcolo · 3. Client GME · 4. Fornitori di energia e FusionSolar ·
+5. Persistenza e view · 6. API · 7. Frontend · 8. Deploy · 9. Confronto con la realtà
 
-Una milestone si chiude solo quando il suo criterio è verificato, non quando compila. Modbus e
-valore dell'autoconsumo sono fuori dalle milestone.
+Una milestone si chiude solo quando il suo criterio è verificato, non quando compila. Modbus come
+secondo fornitore è fuori dalle milestone.
 
 ## Test
 
 - Dominio testato senza I/O: cambio d'ora (92/96/100 quarti), ricaduta al prezzo orario,
-  regimi di valorizzazione.
+  regimi di valorizzazione, fasce ARERA nei festivi, i tre tipi di offerta luce.
 - Client esterni contro server finti (WireMock.Net), mai contro i servizi reali in CI.
-- Persistenza su PostgreSQL vero (Testcontainers), non su provider in memoria.
+- Persistenza su SQLite vero (file temporaneo), mai sul provider InMemory di EF Core.
+- Il job `energy-import` si testa con un fornitore finto: prova che il contratto basta.
 - I totali delle view devono coincidere con quelli del calcolatore di dominio.
 
 ## Git
