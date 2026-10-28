@@ -78,10 +78,12 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   nuovo implementa `ISyncJob` e aggiunge la sua riga in `ServiceCollectionExtensions.Schedules`.
 - ⚠️ Il `.gitignore` standard di .NET ignora le cartelle `Backup*/`: per questo il backup sta in
   `DbBackup/`. Dopo aver creato una cartella, controllare con `git status` che sia davvero tracciata.
-- Su Azure (`infra/`, `docs/deploy-azure.md`) il disco del container non sopravvive a un riavvio:
-  il database riparte dall'ultimo backup su Azure Files (`DatabaseRestore`), e il backup gira
-  anche allo spegnimento. ⛔ Mai puntare la connessione SQLite su Azure Files. Mai esporre l'app
-  su internet senza il login Microsoft (senza `AUTH_CLIENT_ID` l'ingress resta interno).
+- Su Azure App Service (`docs/deploy-azure.md`, workflow `Deploy` con publish profile come
+  idrosistemi) l'API serve anche il frontend da `wwwroot`. Il disco locale (`%TEMP%`) non
+  sopravvive a un riavvio: il database riparte dall'ultimo backup in `%HOME%` (`DatabaseRestore`),
+  e il backup gira anche allo spegnimento. ⛔ Mai puntare la connessione SQLite su `%HOME%` (è
+  storage di rete). Una sola istanza, Always On, login Microsoft attivo. La strada Container Apps
+  è stata tolta il 2026-10-28 e non va ripresa.
 - Le credenziali GME sono facoltative all'avvio (il job lo segnala in «Stato»); quelle del
   fornitore di energia no.
 - Le date in ingresso all'API sono in ora italiana (`yyyy-MM-dd`); le risposte portano il

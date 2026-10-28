@@ -32,10 +32,11 @@ public static class ServiceCollectionExtensions
             .Validate(o => EnergyProviders.Contains(o.Provider), $"Energy:Provider deve essere uno di: {string.Join(", ", EnergyProviders)}.")
             .ValidateOnStart();
         services.AddOptions<GmeOptions>().Bind(configuration.GetSection(GmeOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
-        services.AddOptions<BackupOptions>().Bind(configuration.GetSection(BackupOptions.Section)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<BackupOptions>().Bind(configuration.GetSection(BackupOptions.Section))
+            .PostConfigure(o => o.Directory = DatabaseLocation.BackupDirectory(configuration))
+            .ValidateDataAnnotations().ValidateOnStart();
 
-        services.AddDbContext<SunCashDbContext>(o => o.UseSqlite(
-            configuration.GetConnectionString("SunCash") ?? throw new InvalidOperationException("Manca ConnectionStrings:SunCash.")));
+        services.AddDbContext<SunCashDbContext>(o => o.UseSqlite(DatabaseLocation.ConnectionString(configuration)));
         services.AddScoped<MarketPriceStore>();
         services.AddScoped<EnergyReadingStore>();
         services.AddScoped<SyncStateStore>();

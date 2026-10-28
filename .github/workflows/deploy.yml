@@ -1,0 +1,83 @@
+# Compila API e frontend e li pubblica su Azure App Service a ogni push su main (o a mano da Actions).
+# Configurazione richiesta nella repo (Settings → Secrets and variables → Actions):
+#   - variabile AZURE_WEBAPP_NAME: nome dell'App Service
+#   - secret AZURE_WEBAPP_PUBLISH_PROFILE: contenuto del "publish profile" scaricato dal portale Azure
+# Le credenziali dell'impianto e del GME NON stanno qui: sono impostazioni dell'App Service
+# (docs/deploy-azure.md). Sull'App Service servono Always On e una sola istanza.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# un deploy alla volta; un push nuovo non interrompe quello in corso
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Runner di GitHub di default: il repo è pubblico, e un runner locale registrato per un altro
+    # repo qui non risponde. Per usarne uno: variabile DEPLOY_RUNNER = self-hosted.
+    runs-on: ${{ vars.DEPLOY_RUNNER || 'ubuntu-latest' }}
+    environment: production
+    env:
+      APP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      HAS_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' }}
+    steps:
+      # condizioni valutate da GitHub, non dalla shell: funzionano uguale su runner Linux e Windows
+      - name: Verifica AZURE_WEBAPP_NAME
+        if: env.APP_NAME == ''
+        run: |
+          echo "::error::Manca la VARIABILE AZURE_WEBAPP_NAME: Settings → Secrets and variables → Actions → scheda Variables → Repository variables (non tra i Secrets)."
+          exit 1
+
+      - name: Verifica AZURE_WEBAPP_PUBLISH_PROFILE
+        if: env.HAS_PROFILE != 'true'
+        run: |
+          echo "::error::Manca il SECRET AZURE_WEBAPP_PUBLISH_PROFILE: Settings → Secrets and variables → Actions → scheda Secrets → Repository secrets."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/SunCash.Web/package-lock.json
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Publish API
+        run: dotnet publish src/SunCash.Api -c Release -o publish
+
+      - name: Build frontend
+        working-directory: src/SunCash.Web
+        run: |
+          npm ci --no-audit --no-fund
+          npx ng build --configuration production
+
+      # Il frontend va in wwwroot: lo serve l'API stessa, una sola app su App Service.
+      - name: Frontend nell'API
+        shell: bash
+        run: |
+          mkdir -p publish/wwwroot
+          cp -r src/SunCash.Web/dist/suncash-web/browser/. publish/wwwroot/
+
+      - name: Deploy su Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish

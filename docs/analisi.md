@@ -493,9 +493,11 @@ docker compose up -d --build
 
 Il backup giornaliero è il terzo job dell'app, `db-backup`, alle 03:17: una copia coerente fatta da SQLite stesso con `VACUUM INTO`, mai una copia del file a database aperto. Le copie vanno in `Backup:Directory` (nel compose `./backups`) e si tengono per `Backup:KeepDays` giorni (predefinito 14). Stare nel processo dell'app tiene un solo scrittore sul file e mette l'esito del backup nella pagina «Stato» come gli altri job. Le copie in `./backups` vanno poi portate fuori dalla macchina (disco esterno, cloud) con lo strumento che si preferisce: un backup sullo stesso disco non protegge da un guasto del disco.
 
-In alternativa, **Azure Container Apps** (deciso il 2026-10-28 per provare l'app; guida in [`docs/deploy-azure.md`](deploy-azure.md), workflow manuale `Deploy Azure`). Due container nella stessa app (API e nginx), una sola replica sempre accesa, login con account Microsoft tramite l'autenticazione integrata: senza login configurato l'app non è esposta su internet. SQLite non va messo su un file system di rete (Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Quindi il database sta sul disco locale del container, che non sopravvive a un riavvio, e il backup va su Azure Files ogni notte e a ogni spegnimento; all'avvio, se il database manca, l'app riparte dall'ultima copia (`DatabaseRestore`). Il backup scrive la copia in locale e poi la sposta, così SQLite non apre mai un file su Azure Files. Ordine di grandezza dei costi: 10-20 € al mese.
+In alternativa, **Azure App Service** (deciso il 2026-10-28; guida in [`docs/deploy-azure.md`](deploy-azure.md), workflow `Deploy` a ogni push su `main` con il publish profile, come il progetto idrosistemi). Una sola app: l'API serve anche il frontend da `wwwroot`. Può stare nel piano App Service già pagato per idrosistemi. Serve Always On (i job devono girare) e una sola istanza (SQLite vuole un solo scrittore). SQLite non va messo su un file system di rete (il `%HOME%` di App Service, Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Quindi il database sta sul disco locale dell'istanza (`%TEMP%`), che non sopravvive a un riavvio, e il backup va in `%HOME%` ogni notte e a ogni spegnimento; all'avvio, se il database manca, l'app riparte dall'ultima copia (`DatabaseRestore`). Il backup scrive la copia in locale e poi la sposta, così SQLite non apre mai un file sul disco di rete. I percorsi in configurazione accettano variabili d'ambiente (`%HOME%`, `%TEMP%`).
 
-L'app non ha login proprio: in casa la protezione è la rete. Su internet serve un'autenticazione davanti: su Azure è l'autenticazione integrata di Container Apps con Entra ID, fuori casa una VPN o un reverse proxy con autenticazione.
+> **Superato** (2026-10-28): poco prima era stata preparata la strada **Azure Container Apps** (Bicep, identità federata, due registrazioni app). È stata tolta dal repo perché chiedeva molta più configurazione dello schema App Service già in uso per idrosistemi. **Non va ripresa**: due modi di fare il deploy sono due configurazioni che divergono.
+
+L'app non ha login proprio: in casa la protezione è la rete. Su internet serve un'autenticazione davanti: su Azure è l'autenticazione integrata di App Service con account Microsoft, fuori casa una VPN o un reverse proxy con autenticazione.
 
 ## Decisioni aperte e prerequisiti
 
@@ -525,7 +527,7 @@ Decisioni prese:
 Decisioni aperte:
 
 - [ ] Modbus locale come secondo fornitore nella prima versione o rinviato
-- [ ] Hosting definitivo: mini PC/NAS di casa o Azure Container Apps (per provarla si usa Azure)
+- [ ] Hosting definitivo: mini PC/NAS di casa o Azure App Service (per provarla si usa App Service)
 
 ## Piano di sviluppo per Claude Code
 

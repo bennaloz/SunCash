@@ -42,8 +42,8 @@ Prima di avviare, riempire `.env` con le credenziali. L'app risponde su `http://
 
 ## Su Azure
 
-Container Apps con login Microsoft e backup su Azure Files: guida in
-[`docs/deploy-azure.md`](docs/deploy-azure.md), deploy con il workflow manuale «Deploy Azure».
+App Service con login Microsoft, deploy a ogni push su `main` con il publish profile: guida in
+[`docs/deploy-azure.md`](docs/deploy-azure.md).
 
 ## Licenza
 
