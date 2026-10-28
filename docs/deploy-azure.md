@@ -11,11 +11,12 @@ workflow **Deploy** a ogni push su `main` (o a mano da Actions) con il *publish 
 ## Com'è fatto
 
 - **Una sola app**: l'API ASP.NET Core serve anche il frontend Angular, pubblicato in `wwwroot`.
-- **Può stare nel piano App Service di idrosistemi**, senza costi in più, se è dello stesso sistema
-  operativo (Windows) e ha posto.
-- **Database sul disco locale** dell'istanza (`%TEMP%`), che **non sopravvive** a un riavvio: SQLite
-  non va sul disco condiviso `%HOME%`, che è uno storage di rete. Il **backup** va invece in
-  `%HOME%` ogni notte e a ogni spegnimento, e all'avvio l'app, se non trova il database, riparte
+- **Sta nel piano App Service già pagato** (`asp-bb-project`, Linux B1, Italy North, gruppo
+  `rg-bb-project`), insieme a idrosistemi: nessun costo in più. App: **`suncash-bennaloz`**, creata
+  il 2026-10-28 (`https://suncash-bennaloz.azurewebsites.net`).
+- **Database sul disco locale** dell'istanza (`/tmp`), che **non sopravvive** a un riavvio: SQLite
+  non va sul disco condiviso `/home`, che è uno storage di rete. Il **backup** va invece in
+  `/home` ogni notte e a ogni spegnimento, e all'avvio l'app, se non trova il database, riparte
   dall'ultima copia. Energia e prezzi li reimportano comunque i job.
 - **Accesso**: autenticazione integrata di App Service con account Microsoft.
 - **Segreti**: impostazioni dell'App Service, mai nel repo né su GitHub.
@@ -28,8 +29,8 @@ Portale Azure → **Crea una risorsa** → **App Web**:
 | --- | --- |
 | Pubblica | Codice |
 | Stack di runtime | .NET 10 (LTS) |
-| Sistema operativo | Windows (lo stesso del piano di idrosistemi, se lo riusi) |
-| Piano | Quello di idrosistemi, oppure un nuovo piano **Basic B1** o superiore: serve Always On, che il piano gratuito non ha |
+| Sistema operativo | Linux (quello del piano `asp-bb-project`) |
+| Piano | `asp-bb-project`, oppure un nuovo piano **Basic B1** o superiore: serve Always On, che il piano gratuito non ha |
 
 Dopo la creazione, in **Impostazioni → Configurazione → Impostazioni generali**:
 
@@ -44,8 +45,8 @@ E in **Scalabilità orizzontale**: **una sola istanza**. SQLite vuole un solo pr
 
 | Nome | Valore |
 | --- | --- |
-| `ConnectionStrings__SunCash` | `Data Source=%TEMP%\suncash\suncash.db` |
-| `Backup__Directory` | `%HOME%\data\suncash\backups` |
+| `ConnectionStrings__SunCash` | `Data Source=/tmp/suncash/suncash.db` |
+| `Backup__Directory` | `/home/data/suncash/backups` |
 | `Sync__StartDate` | `2026-01-01` (da quando ricostruire lo storico) |
 | `Valuation__Zone` | `NORD` |
 | `Energy__Provider` | `FusionSolar` |
@@ -55,8 +56,8 @@ E in **Scalabilità orizzontale**: **una sola istanza**. SQLite vuole un solo pr
 | `Energy__FusionSolar__StationCode` | codice dell'impianto, `NE=…` (passo 5) |
 | `Gme__UserName`, `Gme__Password` | quando arrivano: senza, l'app parte e la pagina Stato lo segnala |
 
-Su un App Service **Linux** i percorsi diventano `Data Source=/tmp/suncash/suncash.db` e
-`/home/data/suncash/backups`.
+Su un App Service **Windows** i percorsi diventano `Data Source=%TEMP%\suncash\suncash.db` e
+`%HOME%\data\suncash\backups` (i percorsi accettano variabili d'ambiente).
 
 ## Passo 3 — Login Microsoft
 

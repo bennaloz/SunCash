@@ -79,10 +79,10 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 - ⚠️ Il `.gitignore` standard di .NET ignora le cartelle `Backup*/`: per questo il backup sta in
   `DbBackup/`. Dopo aver creato una cartella, controllare con `git status` che sia davvero tracciata.
 - Su Azure App Service (`docs/deploy-azure.md`, workflow `Deploy` con publish profile come
-  idrosistemi) l'API serve anche il frontend da `wwwroot`. Il disco locale (`%TEMP%`) non
-  sopravvive a un riavvio: il database riparte dall'ultimo backup in `%HOME%` (`DatabaseRestore`),
-  e il backup gira anche allo spegnimento. ⛔ Mai puntare la connessione SQLite su `%HOME%` (è
-  storage di rete). Una sola istanza, Always On, login Microsoft attivo. La strada Container Apps
+  idrosistemi; app `suncash-bennaloz` nel piano Linux `asp-bb-project`) l'API serve anche il
+  frontend da `wwwroot`. Il disco locale (`/tmp`) non sopravvive a un riavvio: il database riparte
+  dall'ultimo backup in `/home` (`DatabaseRestore`), e il backup gira anche allo spegnimento.
+  ⛔ Mai puntare la connessione SQLite su `/home` (è storage di rete). Una sola istanza, Always On, login Microsoft attivo. La strada Container Apps
   è stata tolta il 2026-10-28 e non va ripresa.
 - Le credenziali GME sono facoltative all'avvio (il job lo segnala in «Stato»); quelle del
   fornitore di energia no.
