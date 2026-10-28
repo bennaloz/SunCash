@@ -93,7 +93,7 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 ## `<DA VERIFICARE>`: non inventare
 
 L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (prefisso FusionSolar, nomi dei
-campi KPI, codici `failCode`, parametri `RequestData` GME, orario di pubblicazione MGP,
+campi KPI, conferma dei codici `failCode`, quote GME, orario di pubblicazione MGP, 4 ottobre nelle fasce,
 meccanismo PMG, granularità GSE). **Non si riempiono a intuito**: si lasciano configurabili o
 come costanti nominate con un commento `// DA VERIFICARE: …` che rimanda all'analisi, e quando
 il valore è verificato si aggiorna l'analisi.

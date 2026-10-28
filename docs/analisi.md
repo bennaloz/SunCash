@@ -97,11 +97,23 @@ Nomi dei campi KPI per energia immessa, prelevata, prodotta e consumata: `<DA VE
 
 Dal 15 ottobre 2025 il GME espone i dati di mercato con un'API ufficiale; l'FTPS resta solo per un periodo transitorio.
 
-1. Registrazione al form `https://api.mercatoelettrico.org/users/RegistrationForm/RegistrationRequest`; le credenziali arrivano via email.
-2. Login con il metodo `/Auth`, che restituisce un JWT.
-3. Richiesta con `RequestData`: i dati arrivano nel campo `contentResponse`, uno zip in Base64 da decomprimere.
+1. Registrazione al form `https://api.mercatoelettrico.org/users/RegistrationForm/RegistrationRequest`: si firmano le condizioni generali e si mandano via PEC (o email con copia del documento). La password temporanea va cambiata su `https://api.mercatoelettrico.org/users/` prima di usarla, e scade ogni **6 mesi**.
+2. `POST https://api.mercatoelettrico.org/request/api/v1/Auth` con `{"Login": "…", "Password": "…"}`; la risposta ha `Success`, `token` (JWT) e, se fallisce, `Reason`.
+3. `POST …/api/v1/RequestData` con header `Authorization: Bearer <token>` e corpo:
 
-Parametri della richiesta per esiti MGP, zona `NORD`, granularità 15 minuti: `<DA VERIFICARE: Manuale tecnico API GME>`.
+   ```json
+   {"Platform": "PublicMarketResults", "Segment": "MGP", "DataName": "ME_ZonalPrices",
+    "IntervalStart": 20261028, "IntervalEnd": 20261028, "Attributes": {"GranularityType": "PT15"}}
+   ```
+
+   La risposta ha `RequestId`, `FormatType` (`.json.zip`), `ResultRequest` (il motivo, se fallisce) e `ContentResponse`: uno zip in Base64 con dentro un file `.json`.
+4. Ogni elemento del JSON ha `FlowDate` (yyyyMMdd), `Hour` (1-25), `Period` (1-100, il quarto d'ora del giorno), `Market`, `Zone`, `Price` (€/MWh) e `Notes` (ad esempio «Auction cancelled»). Il **PUN Index GME** arriva nella stessa risposta, con `Zone = "PUN"`.
+5. `GranularityType` vale `PT15`, `PT30` o `PT60`, solo per MGP e solo dal 1° ottobre 2025; prima di quella data esiste solo `PT60`. Senza l'attributo il GME restituisce la granularità minima.
+6. Il servizio ha quote per minuto e per ora (connessioni e dati scaricati), consultabili con `GET …/api/v1/GetMyQuotas`. Valori per l'account: `<DA VERIFICARE: GetMyQuotas al primo login>`.
+
+L'ora locale si ricava da `Period` (o da `Hour` con `PT60`) contando i quarti d'ora del giorno italiano: così il giorno da 92 e quello da 100 quarti d'ora tornano da soli, senza interpretare orari.
+
+Verificato il 2026-10-28 sul [manuale tecnico delle API](https://www.mercatoelettrico.org/Portals/0/Documents/it-IT/20251015Manuale_tecnico_API.pdf) del 15 ottobre 2025 (§ 2, 3, 4 e 5.52).
 
 I dati restano del GME e non si possono usare a scopo di lucro. Per un uso personale va bene; se SunCash diventasse un prodotto, servirebbe un'altra fonte o un accordo.
 
@@ -185,7 +197,7 @@ Tipo di offerta (`kind`):
 | Tipo | `p^{en}_q` |
 | --- | --- |
 | `Monoraria` | Un prezzo fisso in €/kWh |
-| `Fasce` | Prezzo F1, F2 o F3 secondo la fascia ARERA del quarto d'ora (festivi compresi) |
+| `Fasce` | Prezzo F1, F2 o F3 secondo la fascia ARERA del quarto d'ora (festivi compresi). Il 4 ottobre è festa nazionale dal 2026, ma se ARERA lo conti come festivo nelle fasce è `<DA VERIFICARE>`: finché non è verificato resta un giorno normale |
 | `IndicizzataPun` | PUN Index GME / 1000 + spread in €/kWh; il PUN è orario o media mensile secondo il contratto |
 
 Il prezzo della bolletta ha due parti, che vivono in due tabelle diverse perché hanno origini diverse (decisione del 2026-10-28):
@@ -213,6 +225,8 @@ I prezzi MGP sono a 15 minuti dal 1° ottobre 2025 e il GME li pubblica anche ag
 
 - se ci sono i dati a 5 minuti del meter, si aggregano a 15 minuti e si usa il prezzo a 15 minuti;
 - se c'è solo il dato orario, si usa il prezzo orario aggregato e ogni ora vale come un blocco unico.
+
+Se in un'ora i dati fini coprono solo alcuni quarti d'ora, l'ora intera usa il dato orario: mescolare le due vie dentro la stessa ora conterebbe l'energia due volte. Se non c'è nessun dato, le righe a 15 minuti restano senza energia, così il buco si vede.
 
 Ogni riga di valore registra quale delle due vie ha usato (`Resolution = Quarter | Hour`), così la dashboard lo può segnalare. La stessa regola vale per il risparmio: con il solo dato orario, il prezzo della bolletta è quello dell'ora. Con quale granularità il GSE valorizzi oggi l'energia ritirata: `<DA VERIFICARE: convenzione GSE e delibere ARERA dopo il passaggio ai 15 minuti>`.
 
@@ -395,7 +409,8 @@ Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volt
 
 - Il client tiene un solo token in memoria e rifà il login solo quando la risposta indica sessione scaduta.
 - Ogni endpoint ha un proprio limitatore (`System.Threading.RateLimiting`) configurabile da `Energy:FusionSolar:MinIntervalPerEndpoint`.
-- Le risposte hanno `success` e `failCode`: il client li controlla sempre, anche con HTTP 200. Codici per sessione scaduta e frequenza eccessiva: `<DA VERIFICARE: tabella failCode della Northbound Interface Reference>`.
+- Le risposte hanno `success` e `failCode`: il client li controlla sempre, anche con HTTP 200. `305` = sessione scaduta (rifare il login), `407` = frequenza eccessiva, `401` = interfaccia non autorizzata per l'account. Fonte: l'integrazione open source [HomeAssistant-FusionSolar](https://github.com/tijsverkoyen/homeassistant-fusionsolar), non la documentazione Huawei: `<DA VERIFICARE: tabella failCode della Northbound Interface Reference>`.
+- L'elenco impianti: `getStationList` è deprecato; l'integrazione citata usa `/thirdData/stations` con `pageNo`. I nomi dei campi KPI sono configurabili (`Energy:FusionSolar:Fields`) e il client registra nel log le chiavi che riceve, così si verificano sulla prima risposta reale.
 - Su frequenza eccessiva il fornitore risponde *riprova al prossimo ciclo* e il job si ferma, invece di riprovare subito, perché i retry ravvicinati allungano il blocco.
 
 ### GME
