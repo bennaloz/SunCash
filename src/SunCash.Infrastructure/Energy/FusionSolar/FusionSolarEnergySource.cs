@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SunCash.Domain.Energy;
 using SunCash.Domain.Time;
+using SunCash.Domain.Valuation;
 
 namespace SunCash.Infrastructure.Energy.FusionSolar;
 
@@ -54,10 +55,12 @@ public sealed class FusionSolarEnergySource(
                     var f = o.Fields;
                     readings.Add(new EnergyReading(new Interval(start, 60), SourceId,
                         Wh(map, f.Export), Wh(map, f.Import), Wh(map, f.Production),
-                        Wh(map, f.Consumption), Wh(map, f.BatteryCharge), Wh(map, f.BatteryDischarge)));
+                        Wh(map, f.Consumption), Wh(map, f.BatteryCharge), Wh(map, f.BatteryDischarge),
+                        Wh(map, f.SelfConsumption)));
                 }
             }
 
+            LogSelfConsumptionCheck(localDate, readings);
             return EnergyFetchResult.Done(readings);
         }
         catch (FusionSolarTooFrequentException ex)
@@ -82,6 +85,23 @@ public sealed class FusionSolarEnergySource(
             _ => null,
         };
         return kwh is { } k ? (long)Math.Round(k * 1000m, MidpointRounding.AwayFromZero) : null;
+    }
+
+    /// <summary>
+    /// DA VERIFICARE (docs/analisi.md): non si sa se <c>selfProvide</c> comprenda la scarica della
+    /// batteria. Per ogni giorno si scrivono nel log l'autoconsumo dichiarato e quello del bilancio
+    /// (prodotta − immessa − carica + scarica): se coincidono, la comprende.
+    /// </summary>
+    private void LogSelfConsumptionCheck(DateOnly localDate, IReadOnlyCollection<EnergyReading> readings)
+    {
+        if (readings.Count == 0)
+            return;
+        var t = EnergyTotals.Sum(readings);
+        long? balance = t is { ProductionWh: { } p, ExportWh: { } e, BatteryChargeWh: { } c, BatteryDischargeWh: { } d }
+            ? p - e - c + d : null;
+        logger.LogInformation(
+            "FusionSolar {Date}: autoconsumo dichiarato {Reported} Wh, dal bilancio {Balance} Wh (prodotta {Production}, immessa {Export}, carica {Charge}, scarica {Discharge})",
+            localDate, t.SelfConsumptionWh, balance, t.ProductionWh, t.ExportWh, t.BatteryChargeWh, t.BatteryDischargeWh);
     }
 
     /// <summary>Le chiavi di <c>dataItemMap</c> si scrivono nel log una volta per processo, per

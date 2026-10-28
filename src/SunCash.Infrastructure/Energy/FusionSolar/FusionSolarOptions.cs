@@ -35,22 +35,27 @@ public sealed class FusionSolarOptions
 
 /// <summary>
 /// Nomi dei campi di <c>getKpiStationHour</c>, in kWh. Un campo vuoto = grandezza non letta.
-/// DA VERIFICARE (docs/analisi.md, «Primo fornitore: Huawei FusionSolar»): i valori predefiniti sono
-/// candidati, non verificati. Il client registra nel log le chiavi che riceve davvero: si confrontano
-/// con la prima risposta reale e si correggono qui o in configurazione.
+/// Verificato il 2026-10-28 sulla prima risposta reale (docs/analisi.md, «Primo fornitore: Huawei
+/// FusionSolar»): le chiavi orarie sono <c>PVYield</c>, <c>inverter_power</c>, <c>ongrid_power</c>,
+/// <c>chargeCap</c>, <c>dischargeCap</c>, <c>selfProvide</c> e altre; prelievo e consumo della casa
+/// non ci sono. Il client registra comunque nel log le chiavi che riceve.
 /// </summary>
 public sealed class FusionSolarFields
 {
     /// <summary>Energia immessa in rete.</summary>
     public string Export { get; set; } = "ongrid_power";
-    /// <summary>Energia prelevata dalla rete.</summary>
-    public string Import { get; set; } = "buyPower";
-    /// <summary>Energia prodotta.</summary>
-    public string Production { get; set; } = "inverter_power";
-    /// <summary>Consumo della casa.</summary>
-    public string Consumption { get; set; } = "use_power";
+    /// <summary>Energia prelevata dalla rete: non c'è nei KPI orari dell'impianto.</summary>
+    public string Import { get; set; } = "";
+    /// <summary>Energia prodotta dai pannelli. <c>inverter_power</c> è l'uscita dell'inverter, che con una
+    /// batteria ibrida può comprendere anche la scarica: nel bilancio la conterebbe due volte.</summary>
+    public string Production { get; set; } = "PVYield";
+    /// <summary>Consumo della casa: non c'è nei KPI orari dell'impianto.</summary>
+    public string Consumption { get; set; } = "";
     /// <summary>Energia caricata in batteria.</summary>
     public string BatteryCharge { get; set; } = "chargeCap";
     /// <summary>Energia scaricata dalla batteria.</summary>
     public string BatteryDischarge { get; set; } = "dischargeCap";
+    /// <summary>Autoconsumo calcolato da FusionSolar. DA VERIFICARE (docs/analisi.md): se comprende la
+    /// scarica della batteria; il fornitore scrive nel log il confronto giornaliero con il bilancio.</summary>
+    public string SelfConsumption { get; set; } = "selfProvide";
 }

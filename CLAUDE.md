@@ -40,8 +40,8 @@ Prima di ogni commit: `git diff --cached` e controllare che non ci sia nulla di 
 - **Regime** (`RidZonale` | `RidPmg`) da configurazione; il PMG sta nella tabella
   `price_floors(year, eur_mwh)`, non in costanti.
 - **Autoconsumo** = consumo − prelievo. C'è una **batteria**: se il fornitore non dà il consumo
-  lo si ricava dal bilancio (prodotta + prelevata − immessa − carica + scarica), **mai** come
-  prodotta − immessa; la riga dichiara la base usata. Il prezzo è solo la parte **variabile** della bolletta
+  si usa l'autoconsumo che dichiara lui (`Reported`) e, se manca anche quello, il bilancio
+  (prodotta − immessa − carica + scarica: il prelievo si elide), **mai** prodotta − immessa; la riga dichiara la base usata. Il prezzo è solo la parte **variabile** della bolletta
   (energia, perdite, trasporto e oneri variabili, accise, IVA): le quote fisse non si evitano.
   Due tabelle con data di validità, mai in configurazione: `tariffs` (offerta dell'utente; oggi
   modulo manuale, domani codice offerta ARERA o PDF — tutte le vie scrivono lì, colonna `origin`)
@@ -105,8 +105,8 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 
 ## `<DA VERIFICARE>`: non inventare
 
-L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (prefisso FusionSolar, nomi dei
-campi KPI, conferma dei codici `failCode`, quote GME, orario di pubblicazione MGP, 4 ottobre nelle fasce,
+L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (se `selfProvide` di FusionSolar
+comprende la batteria, conferma dei codici `failCode`, quote GME, orario di pubblicazione MGP, 4 ottobre nelle fasce,
 meccanismo PMG, granularità GSE). **Non si riempiono a intuito**: si lasciano configurabili o
 come costanti nominate con un commento `// DA VERIFICARE: …` che rimanda all'analisi, e quando
 il valore è verificato si aggiorna l'analisi.

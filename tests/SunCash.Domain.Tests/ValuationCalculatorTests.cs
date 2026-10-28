@@ -132,6 +132,40 @@ public class ValuationCalculatorTests
     }
 
     [Fact]
+    public void Il_bilancio_non_ha_bisogno_del_prelievo()
+    {
+        // Il prelievo si elide: consumo − prelievo = prodotta − immessa − carica + scarica.
+        var reading = Reading(Noon, 15, export: 0, production: 0, charge: 0, discharge: 600);
+
+        var row = ValuationCalculator.ForDay(Input(Day, [reading], [], Monoraria(0.10m))).Single(r => r.Interval.StartUtc == Noon);
+
+        Assert.Equal(SelfConsumptionBasis.Balance, row.SelfConsumptionBasis);
+        Assert.Equal(600, row.SelfConsumptionWh);
+    }
+
+    [Fact]
+    public void Autoconsumo_dichiarato_dal_fornitore_prima_del_bilancio()
+    {
+        var reading = Reading(Noon, 15, export: 0, production: 0, charge: 0, discharge: 600, reported: 550);
+
+        var row = ValuationCalculator.ForDay(Input(Day, [reading], [], Monoraria(0.10m))).Single(r => r.Interval.StartUtc == Noon);
+
+        Assert.Equal(SelfConsumptionBasis.Reported, row.SelfConsumptionBasis);
+        Assert.Equal(550, row.SelfConsumptionWh);
+    }
+
+    [Fact]
+    public void Il_consumo_misurato_vince_sull_autoconsumo_dichiarato()
+    {
+        var reading = Reading(Noon, 15, import: 200, consumption: 1000, reported: 550);
+
+        var row = ValuationCalculator.ForDay(Input(Day, [reading], [], Monoraria(0.10m))).Single(r => r.Interval.StartUtc == Noon);
+
+        Assert.Equal(SelfConsumptionBasis.Measured, row.SelfConsumptionBasis);
+        Assert.Equal(800, row.SelfConsumptionWh);
+    }
+
+    [Fact]
     public void La_carica_della_batteria_non_e_autoconsumo()
     {
         // Mezzogiorno: produce 1000 Wh, ne immette 100, ne mette 700 in batteria; la casa ne usa 200.
@@ -228,8 +262,8 @@ public class ValuationCalculatorTests
 
     private static EnergyReading Reading(
         DateTimeOffset start, int minutes, long? export = null, long? import = null, long? production = null,
-        long? consumption = null, long? charge = null, long? discharge = null) =>
-        new(new Interval(start, minutes), "test", export, import, production, consumption, charge, discharge);
+        long? consumption = null, long? charge = null, long? discharge = null, long? reported = null) =>
+        new(new Interval(start, minutes), "test", export, import, production, consumption, charge, discharge, reported);
 
     private static ValuationInput Input(
         DateOnly day, IReadOnlyList<EnergyReading> readings, IReadOnlyList<MarketPrice> prices, Tariff? tariff = null) =>

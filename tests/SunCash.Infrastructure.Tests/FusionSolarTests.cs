@@ -29,8 +29,12 @@ public sealed class FusionSolarTests : IDisposable
         Assert.Equal(60, r.Interval.Minutes);
         Assert.Equal("fusionsolar-cloud", r.Source);
         Assert.Equal(1234, r.ExportWh);
-        Assert.Equal(500, r.ProductionWh);
-        Assert.Null(r.ConsumptionWh); // campo assente nella risposta
+        Assert.Equal(500, r.ProductionWh); // PVYield, non l'uscita dell'inverter
+        Assert.Equal(100, r.BatteryChargeWh);
+        Assert.Equal(700, r.BatteryDischargeWh);
+        Assert.Equal(450, r.SelfConsumptionWh);
+        Assert.Null(r.ImportWh); // nei KPI orari dell'impianto non c'è
+        Assert.Null(r.ConsumptionWh);
     }
 
     [Fact]
@@ -185,7 +189,9 @@ public sealed class FusionSolarTests : IDisposable
                 stationCode = "NE=00000000",
                 dataItemMap = new Dictionary<string, object?>
                 {
-                    ["ongrid_power"] = 1.234, ["inverter_power"] = "0.5", ["buyPower"] = null,
+                    // Chiavi reali di getKpiStationHour, valori inventati.
+                    ["PVYield"] = "0.5", ["inverter_power"] = 0.9, ["ongrid_power"] = 1.234,
+                    ["chargeCap"] = 0.1, ["dischargeCap"] = 0.7, ["selfProvide"] = 0.45, ["power_profit"] = null,
                 },
             },
         },

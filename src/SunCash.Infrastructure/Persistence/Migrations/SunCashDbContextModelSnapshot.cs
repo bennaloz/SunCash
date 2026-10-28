@@ -91,6 +91,10 @@ namespace SunCash.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("production_wh");
 
+                    b.Property<long?>("SelfConsumptionWh")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("self_consumption_wh");
+
                     b.HasKey("TsUtc", "Resolution", "Source");
 
                     b.ToTable("energy_readings", (string)null);

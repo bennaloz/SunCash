@@ -5,6 +5,7 @@ namespace SunCash.Domain.Valuation;
 /// <summary>
 /// Energia autoconsumata = consumo − prelievo. L'impianto ha una batteria, quindi la scorciatoia
 /// «prodotta − immessa» non si usa mai: sposterebbe il risparmio nell'ora di carica.
+/// In ordine: consumo misurato, autoconsumo dichiarato dal fornitore, bilancio dei flussi.
 /// </summary>
 public static class SelfConsumption
 {
@@ -14,12 +15,14 @@ public static class SelfConsumption
         if (e.ConsumptionWh is { } consumption && e.ImportWh is { } import)
             return (Math.Max(0, consumption - import), SelfConsumptionBasis.Measured);
 
-        if (e is { ProductionWh: { } production, ImportWh: { } imp, ExportWh: { } export,
+        if (e.SelfConsumptionWh is { } reported)
+            return (Math.Max(0, reported), SelfConsumptionBasis.Reported);
+
+        // Consumo dal bilancio (prodotta + prelevata − immessa − carica + scarica) meno il prelievo:
+        // il prelievo si elide, quindi non serve conoscerlo.
+        if (e is { ProductionWh: { } production, ExportWh: { } export,
                    BatteryChargeWh: { } charge, BatteryDischargeWh: { } discharge })
-        {
-            var consumption2 = production + imp - export - charge + discharge;
-            return (Math.Max(0, consumption2 - imp), SelfConsumptionBasis.Balance);
-        }
+            return (Math.Max(0, production - export - charge + discharge), SelfConsumptionBasis.Balance);
 
         return (null, SelfConsumptionBasis.Unavailable);
     }
@@ -35,7 +38,8 @@ public sealed record EnergyTotals(
     long? ProductionWh,
     long? ConsumptionWh,
     long? BatteryChargeWh,
-    long? BatteryDischargeWh)
+    long? BatteryDischargeWh,
+    long? SelfConsumptionWh = null)
 {
     /// <summary>Somma le misure, campo per campo.</summary>
     public static EnergyTotals Sum(IReadOnlyCollection<EnergyReading> readings) => new(
@@ -44,7 +48,8 @@ public sealed record EnergyTotals(
         SumOrNull(readings, r => r.ProductionWh),
         SumOrNull(readings, r => r.ConsumptionWh),
         SumOrNull(readings, r => r.BatteryChargeWh),
-        SumOrNull(readings, r => r.BatteryDischargeWh));
+        SumOrNull(readings, r => r.BatteryDischargeWh),
+        SumOrNull(readings, r => r.SelfConsumptionWh));
 
     private static long? SumOrNull(IReadOnlyCollection<EnergyReading> readings, Func<EnergyReading, long?> field) =>
         readings.Count == 0 || readings.Any(r => field(r) is null) ? null : readings.Sum(r => field(r)!.Value);

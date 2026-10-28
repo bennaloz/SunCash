@@ -15,6 +15,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       </nav>
     </header>
     <main><router-outlet /></main>
+    <!-- Condizioni d'uso dell'API GME, art. 5: dove si usano i prezzi va citata la fonte. -->
+    <footer class="muted">Prezzi di mercato — Fonte: Gestore dei Mercati Energetici S.p.A.</footer>
   `,
   styles: `
     .bar { display: flex; align-items: center; gap: 24px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
@@ -22,7 +24,9 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     nav { display: flex; gap: 4px; }
     nav a { text-decoration: none; padding: 6px 10px; border-radius: var(--radius-sm); color: var(--text-muted); }
     nav a.active { background: var(--surface-2); color: var(--text); font-weight: 600; }
+    footer { padding: 8px 16px 16px; text-align: center; }
     @media (max-width: 860px) {
+      footer { padding-bottom: 72px; }
       nav { position: fixed; bottom: 0; left: 0; right: 0; justify-content: space-around; overflow-x: auto; background: var(--surface); border-top: 1px solid var(--border); padding: 6px 4px; }
       nav a { font-size: var(--fs-small); padding: 6px 4px; white-space: nowrap; }
     }
