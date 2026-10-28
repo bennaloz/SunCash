@@ -10,7 +10,9 @@ public sealed record ValuationTotals(
     decimal ExportValueEur,
     decimal SavingsEur,
     int RowsWithoutExport,
-    int RowsWithoutSavings)
+    int RowsWithoutSavings,
+    long ImportWh,
+    decimal ImportCostEur)
 {
     /// <summary>Beneficio totale: valore dell'immesso più risparmio.</summary>
     public decimal BenefitEur => ExportValueEur + SavingsEur;
@@ -25,8 +27,8 @@ public sealed record ValuationTotals(
     /// la dashboard può dire che un totale è incompleto.</summary>
     public static ValuationTotals Of(IEnumerable<ValuationRow> rows)
     {
-        long export = 0, self = 0;
-        decimal value = 0, savings = 0;
+        long export = 0, self = 0, import = 0;
+        decimal value = 0, savings = 0, importCost = 0;
         int noExport = 0, noSavings = 0;
         foreach (var r in rows)
         {
@@ -34,8 +36,10 @@ public sealed record ValuationTotals(
             self += r.SelfConsumptionWh ?? 0;
             if (r.ExportValueEur is { } v) value += v; else noExport++;
             if (r.SavingsEur is { } s) savings += s; else noSavings++;
+            import += r.ImportWh ?? 0;
+            importCost += r.ImportCostEur ?? 0;
         }
 
-        return new ValuationTotals(export, self, value, savings, noExport, noSavings);
+        return new ValuationTotals(export, self, value, savings, noExport, noSavings, import, importCost);
     }
 }

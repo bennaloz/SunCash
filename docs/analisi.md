@@ -433,9 +433,12 @@ L'API ASP.NET Core espone letture calcolate dal calcolatore di dominio, più le 
 | `GET /api/summary` | Oggi, ieri, mese corrente, anno corrente, miglior giorno, con le due voci e il totale |
 | `GET /api/sync/status` | Stato dei job da `sync_state`, fornitore attivo e intervalli mancanti |
 | `POST /api/sync/{job}/run` | Avvio manuale di un job, utile durante il backfill |
-| `GET /api/tariffs` · `PUT /api/tariffs/{validFrom}` | Elenco e inserimento o correzione di un'offerta |
-| `GET /api/bills` · `PUT /api/bills/{periodFrom}/{periodTo}` | Bollette reali con accanto la bolletta stimata (prelievi × tariffa) |
+| `GET /api/tariffs` · `PUT` / `DELETE /api/tariffs/{validFrom}` | Elenco, inserimento o correzione, cancellazione di un'offerta |
+| `GET /api/regulated-charges` | Parte regolata ARERA caricata dal repo (sola lettura) |
+| `GET /api/bills` · `PUT` / `DELETE /api/bills/{periodFrom}/{periodTo}` | Bollette reali con accanto, per lo stesso periodo, i prelievi misurati e il loro costo variabile stimato (prelievi × prezzo della bolletta, senza quote fisse) |
+| `GET /api/gse-payments` | Pagamenti GSE inseriti |
 | `PUT /api/gse-payments/{month}` | Inserimento o correzione di un pagamento GSE |
+| `GET /openapi/v1.json` | Descrizione OpenAPI di tutti gli endpoint |
 
 Le date nei parametri sono in ora italiana (`yyyy-MM-dd`); l'API le converte in intervalli UTC. Le risposte riportano il timestamp in UTC e l'etichetta locale già calcolata, così il frontend non fa conversioni.
 

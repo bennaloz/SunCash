@@ -92,7 +92,9 @@ public static class ValuationCalculator
             selfWh,
             basis,
             billPrice,
-            selfWh is { } s && billPrice is { } t ? s / 1000m * t : null);
+            selfWh is { } s && billPrice is { } t ? s / 1000m * t : null,
+            energy?.ImportWh,
+            energy?.ImportWh is { } imp && billPrice is { } t2 ? imp / 1000m * t2 : null);
     }
 
     /// <summary>Prezzo MGP della zona per l'intervallo: a 15 minuti se c'è e l'intervallo è un

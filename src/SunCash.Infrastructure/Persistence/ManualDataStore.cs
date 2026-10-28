@@ -72,6 +72,42 @@ public sealed class ManualDataStore(SunCashDbContext db)
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Tutte le bollette, dalla più recente.</summary>
+    public async Task<IReadOnlyList<BillRow>> BillsAsync(CancellationToken ct) =>
+        await db.Bills.AsNoTracking().OrderByDescending(b => b.PeriodFrom).ToListAsync(ct);
+
+    /// <summary>Inserisce o sostituisce la bolletta del periodo.</summary>
+    public async Task SaveBillAsync(BillRow bill, CancellationToken ct)
+    {
+        var row = await db.Bills.SingleOrDefaultAsync(x => x.PeriodFrom == bill.PeriodFrom && x.PeriodTo == bill.PeriodTo, ct);
+        if (row is null)
+            db.Bills.Add(row = new BillRow { PeriodFrom = bill.PeriodFrom, PeriodTo = bill.PeriodTo });
+        row.ImportKwh = bill.ImportKwh;
+        row.AmountEur = bill.AmountEur;
+        row.Origin = bill.Origin;
+        row.Notes = bill.Notes;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Cancella la bolletta del periodo; falso se non c'era.</summary>
+    public async Task<bool> DeleteBillAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
+        await db.Bills.Where(b => b.PeriodFrom == from && b.PeriodTo == to).ExecuteDeleteAsync(ct) > 0;
+
+    /// <summary>Pagamenti GSE per mese (<c>yyyy-MM</c>).</summary>
+    public async Task<IReadOnlyDictionary<string, GsePaymentRow>> GsePaymentsAsync(CancellationToken ct) =>
+        await db.GsePayments.AsNoTracking().ToDictionaryAsync(p => p.Month, ct);
+
+    /// <summary>Inserisce o corregge il pagamento GSE di un mese.</summary>
+    public async Task SaveGsePaymentAsync(string month, decimal amountEur, string? notes, CancellationToken ct)
+    {
+        var row = await db.GsePayments.SingleOrDefaultAsync(x => x.Month == month, ct);
+        if (row is null)
+            db.GsePayments.Add(row = new GsePaymentRow { Month = month });
+        row.AmountEur = amountEur;
+        row.Notes = notes;
+        await db.SaveChangesAsync(ct);
+    }
+
     private static Tariff ToDomain(TariffRow r) => new(r.ValidFrom, r.Kind, r.EnergyF1EurKwh, r.EnergyF2EurKwh,
         r.EnergyF3EurKwh, r.PunSpreadEurKwh, r.PunBasis, r.LossesFactor, r.Origin, r.OfferCode, r.Notes);
 }

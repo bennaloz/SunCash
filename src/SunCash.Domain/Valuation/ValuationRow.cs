@@ -5,7 +5,8 @@ namespace SunCash.Domain.Valuation;
 
 /// <summary>
 /// Una riga di valorizzazione: un quarto d'ora, o un'ora intera se c'è solo il dato orario.
-/// Gli euro non si arrotondano qui: si arrotonda solo in presentazione.
+/// Gli euro non si arrotondano qui: si arrotonda solo in presentazione. <see cref="ImportCostEur"/> è
+/// il costo variabile dei prelievi, per confrontare la bolletta stimata con quella reale.
 /// </summary>
 public sealed record ValuationRow(
     Interval Interval,
@@ -21,4 +22,6 @@ public sealed record ValuationRow(
     long? SelfConsumptionWh,
     SelfConsumptionBasis SelfConsumptionBasis,
     decimal? BillPriceEurKwh,
-    decimal? SavingsEur);
+    decimal? SavingsEur,
+    long? ImportWh,
+    decimal? ImportCostEur);

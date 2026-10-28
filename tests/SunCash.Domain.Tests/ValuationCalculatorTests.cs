@@ -236,3 +236,22 @@ public class ValuationCalculatorTests
         new(day, Zone, ValuationRegime.RidZonale, null, readings, prices,
             tariff is null ? [] : [tariff], [Charges], null);
 }
+
+public class ImportCostTests
+{
+    [Fact]
+    public void Il_costo_dei_prelievi_usa_lo_stesso_prezzo_della_bolletta_del_risparmio()
+    {
+        var noon = new DateTimeOffset(2026, 6, 17, 10, 0, 0, TimeSpan.Zero);
+        var tariff = new Tariff(new DateOnly(2026, 1, 1), OfferKind.Monoraria, 0.10m, null, null, null, null, 0m, DataOrigin.Manual);
+        var charges = new RegulatedCharges(new DateOnly(2026, 1, 1), 0.04m, 0.0227m, 0.10m);
+        var reading = new EnergyReading(new Interval(noon, 15), "test", 0, 500, null, 1500, null, null);
+
+        var row = ValuationCalculator.ForDay(new ValuationInput(new DateOnly(2026, 6, 17), "NORD", ValuationRegime.RidZonale,
+            null, [reading], [], [tariff], [charges], null)).Single(r => r.Interval.StartUtc == noon);
+
+        Assert.Equal(500, row.ImportWh);
+        Assert.Equal(0.5m * row.BillPriceEurKwh, row.ImportCostEur);
+        Assert.Equal(500, ValuationTotals.Of([row]).ImportWh);
+    }
+}
