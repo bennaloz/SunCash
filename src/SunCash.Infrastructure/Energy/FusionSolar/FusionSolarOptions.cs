@@ -20,8 +20,10 @@ public sealed class FusionSolarOptions
     [Required(AllowEmptyStrings = false)]
     public string SystemCode { get; set; } = "";
 
-    /// <summary>Codice dell'impianto, ricavato al primo login. Mai nel repo.</summary>
-    [Required(AllowEmptyStrings = false)]
+    /// <summary>
+    /// Codice dell'impianto («NE=…»). Facoltativo: se manca, l'app usa l'unico impianto dell'account
+    /// (<see cref="FusionSolarStationLocator"/>). Mai nel repo.
+    /// </summary>
     public string StationCode { get; set; } = "";
 
     /// <summary>Intervallo minimo fra due chiamate allo stesso endpoint. Prudente: va tarato sull'account.</summary>

@@ -11,7 +11,10 @@ namespace SunCash.Infrastructure.Energy.FusionSolar;
 /// il dettaglio a 5 minuti del meter (<c>getDevHistoryKpi</c>) è un'estensione successiva.
 /// </summary>
 public sealed class FusionSolarEnergySource(
-    FusionSolarClient client, IOptions<FusionSolarOptions> options, ILogger<FusionSolarEnergySource> logger) : IEnergySource
+    FusionSolarClient client,
+    FusionSolarStationLocator station,
+    IOptions<FusionSolarOptions> options,
+    ILogger<FusionSolarEnergySource> logger) : IEnergySource
 {
     /// <summary>Id salvato in <c>energy_readings.source</c>.</summary>
     public const string SourceId = "fusionsolar-cloud";
@@ -34,8 +37,9 @@ public sealed class FusionSolarEnergySource(
         var (dayStart, dayEnd) = ItalianTime.DayBoundsUtc(localDate);
         try
         {
+            var stationCode = await station.ResolveAsync(ct);
             var json = await client.PostAsync("getKpiStationHour",
-                new { stationCodes = o.StationCode, collectTime = dayStart.ToUnixTimeMilliseconds() }, ct);
+                new { stationCodes = stationCode, collectTime = dayStart.ToUnixTimeMilliseconds() }, ct);
 
             var readings = new List<EnergyReading>();
             if (json.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)

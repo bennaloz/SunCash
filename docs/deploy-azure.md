@@ -50,10 +50,10 @@ E in **Scalabilità orizzontale**: **una sola istanza**. SQLite vuole un solo pr
 | `Sync__StartDate` | `2026-01-01` (da quando ricostruire lo storico) |
 | `Valuation__Zone` | `NORD` |
 | `Energy__Provider` | `FusionSolar` |
-| `Energy__FusionSolar__BaseUrl` | `https://<prefisso>.fusionsolar.huawei.com/thirdData/` |
-| `Energy__FusionSolar__UserName` | utente Northbound |
-| `Energy__FusionSolar__SystemCode` | password Northbound |
-| `Energy__FusionSolar__StationCode` | codice dell'impianto, `NE=…` (passo 5) |
+| `Energy__FusionSolar__BaseUrl` | `https://<cluster>.fusionsolar.huawei.com/thirdData/`: il cluster è quello dell'indirizzo di FusionSolar web (`uni002eu5…` → `eu5`) |
+| `Energy__FusionSolar__UserName` | utente **Northbound** (non quello di FusionSolar web) |
+| `Energy__FusionSolar__SystemCode` | **password** dell'utente Northbound: Huawei la chiama «systemCode» |
+| `Energy__FusionSolar__StationCode` | facoltativo: se manca, l'app usa l'unico impianto dell'account e scrive il codice nel log (passo 5) |
 | `Gme__UserName`, `Gme__Password` | quando arrivano: senza, l'app parte e la pagina Stato lo segnala |
 
 Su un App Service **Windows** i percorsi diventano `Data Source=%TEMP%\suncash\suncash.db` e
@@ -80,9 +80,11 @@ Il workflow gira sui runner di GitHub: il repo è pubblico, e il runner locale d
 registrato per quell'altro repo. Per usare un runner locale anche qui: registrarlo per SunCash e
 impostare la variabile `DEPLOY_RUNNER` = `self-hosted`.
 
-## Passo 5 — Il codice dell'impianto FusionSolar
+## Passo 5 — Il codice dell'impianto FusionSolar (di solito non serve)
 
-Lo `stationCode` è una stringa come `NE=12345678`. Due modi:
+Lo `stationCode` è una stringa come `NE=12345678`. Se l'account Northbound vede un solo impianto,
+l'app lo trova da sola al primo import e lo scrive nel log. Serve impostarlo solo se l'account vede
+più impianti (la pagina Stato lo dice). Per trovarlo a mano, due modi:
 
 - in FusionSolar web, apri il tuo impianto: l'indirizzo nel browser contiene `NE%3D…`, cioè `NE=…`;
 - oppure, con le credenziali Northbound, da un terminale del tuo PC:

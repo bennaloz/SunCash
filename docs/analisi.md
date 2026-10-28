@@ -86,7 +86,7 @@ La prima versione usa l'API cloud Northbound; Modbus TCP resta un fornitore succ
 Flusso Northbound:
 
 1. `POST /thirdData/login` con `userName` e `systemCode`; il token torna nell'header `xsrf-token` e va rimandato come `XSRF-TOKEN`.
-2. Elenco impianti per ricavare lo `stationCode`. `getStationList` è deprecato: usare l'endpoint che lo sostituisce nella Northbound Interface Reference.
+2. Elenco impianti per ricavare lo `stationCode`. `getStationList` è deprecato: si usa `stations` (`pageNo`) e, se l'account non è abilitato, `getStationList`. Se `Energy:FusionSolar:StationCode` è vuoto, l'app usa l'unico impianto dell'account e scrive il codice nel log; con più impianti chiede di configurarlo (deciso il 2026-10-28: nella UI SmartPVMS il codice `NE=…` non è facile da trovare). Nomi dei campi della risposta (`plantCode` o `stationCode`): `<DA VERIFICARE: risposta reale>`.
 3. `POST /thirdData/getKpiStationHour` con `stationCodes` e `collectTime` (epoch in millisecondi del giorno): restituisce le righe orarie del giorno.
 4. Per il dettaglio a 15 minuti: `getDevHistoryKpi` sul dispositivo meter, poi aggregazione. **Nella prima versione SunCash legge solo il dato orario** (`getKpiStationHour`): il dettaglio a 5 minuti è un'estensione, da fare quando i nomi dei campi del meter sono verificati su una risposta reale.
 
