@@ -30,7 +30,7 @@ export interface ValuationRow {
   punEurMwh: number | null;
   exportValueEur: number | null;
   selfConsumptionKwh: number | null;
-  selfConsumptionBasis: 'Measured' | 'Balance' | 'Unavailable';
+  selfConsumptionBasis: 'Measured' | 'Reported' | 'Balance' | 'Unavailable';
   billPriceEurKwh: number | null;
   savingsEur: number | null;
 }

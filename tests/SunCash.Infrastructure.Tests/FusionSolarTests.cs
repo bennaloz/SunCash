@@ -29,8 +29,12 @@ public sealed class FusionSolarTests : IDisposable
         Assert.Equal(60, r.Interval.Minutes);
         Assert.Equal("fusionsolar-cloud", r.Source);
         Assert.Equal(1234, r.ExportWh);
-        Assert.Equal(500, r.ProductionWh);
-        Assert.Null(r.ConsumptionWh); // campo assente nella risposta
+        Assert.Equal(500, r.ProductionWh); // PVYield, non l'uscita dell'inverter
+        Assert.Equal(100, r.BatteryChargeWh);
+        Assert.Equal(700, r.BatteryDischargeWh);
+        Assert.Equal(450, r.SelfConsumptionWh);
+        Assert.Null(r.ImportWh); // nei KPI orari dell'impianto non c'è
+        Assert.Null(r.ConsumptionWh);
     }
 
     [Fact]
@@ -88,18 +92,89 @@ public sealed class FusionSolarTests : IDisposable
         Assert.Contains("20001", result.Message);
     }
 
-    private FusionSolarEnergySource Source()
+    private FusionSolarEnergySource Source(string stationCode = "NE=00000000") // segnaposto, non un impianto reale
     {
         var options = MsOptions.Create(new FusionSolarOptions
         {
             BaseUrl = new Uri(_cloud.Url + "/thirdData/"),
             UserName = "utente",
             SystemCode = "segreto",
-            StationCode = "NE=00000000", // segnaposto, non un impianto reale
+            StationCode = stationCode,
             MinIntervalPerEndpoint = TimeSpan.Zero,
         });
         var client = new FusionSolarClient(new HttpClient(), _session, new EndpointThrottle(TimeProvider.System), options);
-        return new FusionSolarEnergySource(client, options, NullLogger<FusionSolarEnergySource>.Instance);
+        var locator = new FusionSolarStationLocator(client, _session, options, NullLogger<FusionSolarStationLocator>.Instance);
+        return new FusionSolarEnergySource(client, locator, options, NullLogger<FusionSolarEnergySource>.Instance);
+    }
+
+    [Fact]
+    public async Task Senza_codice_configurato_usa_l_unico_impianto_dell_account_e_lo_ricorda()
+    {
+        GivenLogin("token-1");
+        _cloud.Given(Request.Create().WithPath("/thirdData/stations").UsingPost())
+            .RespondWith(Response.Create().WithBodyAsJson(new
+            {
+                success = true, failCode = 0,
+                data = new { list = new[] { new { plantCode = "NE=11111111", plantName = "Impianto di prova" } } },
+            }));
+        GivenHourly(Response.Create().WithBodyAsJson(HourlyBody()));
+
+        var source = Source(stationCode: "");
+        await source.FetchDayAsync(Day, CancellationToken.None);
+        var result = await source.FetchDayAsync(Day, CancellationToken.None);
+
+        Assert.Equal(EnergyFetchStatus.Done, result.Status);
+        Assert.Single(_cloud.LogEntries, e => (e.RequestMessage?.Path ?? "").EndsWith("stations"));
+        Assert.All(_cloud.LogEntries.Where(e => (e.RequestMessage?.Path ?? "").EndsWith("getKpiStationHour")),
+            e => Assert.Contains("NE=11111111", e.RequestMessage!.Body));
+    }
+
+    [Fact]
+    public async Task Con_piu_impianti_non_sceglie_e_chiede_di_configurarlo()
+    {
+        GivenLogin("token-1");
+        _cloud.Given(Request.Create().WithPath("/thirdData/stations").UsingPost())
+            .RespondWith(Response.Create().WithBodyAsJson(new
+            {
+                success = true, failCode = 0,
+                data = new { list = new[] { new { plantCode = "NE=1" }, new { plantCode = "NE=2" } } },
+            }));
+
+        var result = await Source(stationCode: "").FetchDayAsync(Day, CancellationToken.None);
+
+        Assert.Equal(EnergyFetchStatus.Error, result.Status);
+        Assert.Contains("2 impianti", result.Message);
+        Assert.DoesNotContain(_cloud.LogEntries, e => (e.RequestMessage?.Path ?? "").EndsWith("getKpiStationHour"));
+    }
+
+    [Fact]
+    public async Task Se_stations_non_e_abilitata_prova_getStationList()
+    {
+        GivenLogin("token-1");
+        _cloud.Given(Request.Create().WithPath("/thirdData/stations").UsingPost())
+            .RespondWith(Response.Create().WithBodyAsJson(new { success = false, failCode = 401, message = "no access" }));
+        _cloud.Given(Request.Create().WithPath("/thirdData/getStationList").UsingPost())
+            .RespondWith(Response.Create().WithBodyAsJson(new
+            {
+                success = true, failCode = 0, data = new[] { new { stationCode = "NE=22222222" } },
+            }));
+        GivenHourly(Response.Create().WithBodyAsJson(HourlyBody()));
+
+        var result = await Source(stationCode: "").FetchDayAsync(Day, CancellationToken.None);
+
+        Assert.Equal(EnergyFetchStatus.Done, result.Status);
+        Assert.Contains("NE=22222222", _cloud.LogEntries.Single(e => (e.RequestMessage?.Path ?? "").EndsWith("getKpiStationHour")).RequestMessage!.Body);
+    }
+
+    [Fact]
+    public async Task Con_il_codice_configurato_non_cerca_l_impianto()
+    {
+        GivenLogin("token-1");
+        GivenHourly(Response.Create().WithBodyAsJson(HourlyBody()));
+
+        await Source().FetchDayAsync(Day, CancellationToken.None);
+
+        Assert.DoesNotContain(_cloud.LogEntries, e => (e.RequestMessage?.Path ?? "").EndsWith("stations"));
     }
 
     private static object HourlyBody() => new
@@ -114,7 +189,9 @@ public sealed class FusionSolarTests : IDisposable
                 stationCode = "NE=00000000",
                 dataItemMap = new Dictionary<string, object?>
                 {
-                    ["ongrid_power"] = 1.234, ["inverter_power"] = "0.5", ["buyPower"] = null,
+                    // Chiavi reali di getKpiStationHour, valori inventati.
+                    ["PVYield"] = "0.5", ["inverter_power"] = 0.9, ["ongrid_power"] = 1.234,
+                    ["chargeCap"] = 0.1, ["dischargeCap"] = 0.7, ["selfProvide"] = 0.45, ["power_profit"] = null,
                 },
             },
         },

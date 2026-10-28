@@ -16,6 +16,9 @@ public enum SelfConsumptionBasis
     /// <summary>Consumo della casa misurato dal fornitore.</summary>
     Measured,
 
+    /// <summary>Autoconsumo calcolato e dichiarato dal fornitore (es. FusionSolar <c>selfProvide</c>).</summary>
+    Reported,
+
     /// <summary>Consumo ricavato dal bilancio: prodotta + prelevata − immessa − carica + scarica.</summary>
     Balance,
 

@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
                 services.AddSingleton<FusionSolarSession>();
                 services.AddSingleton<EndpointThrottle>();
                 services.AddHttpClient<FusionSolarClient>();
+                services.AddScoped<FusionSolarStationLocator>();
                 services.AddScoped<IEnergySource, FusionSolarEnergySource>();
                 break;
             default:

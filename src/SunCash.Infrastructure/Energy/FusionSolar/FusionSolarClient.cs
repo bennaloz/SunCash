@@ -78,11 +78,14 @@ public sealed class FusionSolarClient(
         json.TryGetProperty("data", out var d) ? d.ToString() : "";
 }
 
-/// <summary>Token della sessione FusionSolar in memoria (singleton: una sola sessione attiva).</summary>
+/// <summary>Stato della sessione FusionSolar in memoria (singleton: una sola sessione attiva).</summary>
 public sealed class FusionSolarSession
 {
     /// <summary>Token corrente, <c>null</c> prima del login o dopo una sessione scaduta.</summary>
     public string? Token { get; set; }
+
+    /// <summary>Codice dell'impianto trovato da <see cref="FusionSolarStationLocator"/>, se non configurato.</summary>
+    public string? StationCode { get; set; }
 }
 
 /// <summary>Errore restituito da FusionSolar.</summary>

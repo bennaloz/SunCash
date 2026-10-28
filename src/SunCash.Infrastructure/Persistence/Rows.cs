@@ -40,6 +40,8 @@ public sealed class EnergyReadingRow
     public long? BatteryChargeWh { get; set; }
     /// <summary>Energia scaricata dalla batteria in Wh.</summary>
     public long? BatteryDischargeWh { get; set; }
+    /// <summary>Autoconsumo dichiarato dal fornitore in Wh.</summary>
+    public long? SelfConsumptionWh { get; set; }
     /// <summary>Quando è stata importata.</summary>
     public DateTimeOffset ImportedAt { get; set; }
 }

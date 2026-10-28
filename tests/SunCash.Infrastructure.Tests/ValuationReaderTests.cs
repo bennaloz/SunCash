@@ -98,7 +98,7 @@ public class ValuationReaderTests
                 prices.Add(new MarketPrice(new Interval(t, 60), MarketPrice.Mgp, Zone, 90m + hour * 1.13m));
                 prices.Add(new MarketPrice(new Interval(t, 60), MarketPrice.Mgp, MarketPrice.PunZone, 100m + hour * 0.71m));
                 if (hour % 2 == 0)
-                    readings.Add(new EnergyReading(new Interval(t, 60), "test", 400 + hour * 13, 150, 900 + hour * 7, 650, 100, 20));
+                    readings.Add(new EnergyReading(new Interval(t, 60), "test", 400 + hour * 13, 150, 900 + hour * 7, 650, 100, 20, 480));
                 else
                     for (var k = 0; k < 4; k++)
                         readings.Add(new EnergyReading(new Interval(t.AddMinutes(15 * k), 15), "test", 100 + k, 40, 220, 160 + k, 25, 5));

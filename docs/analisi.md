@@ -86,13 +86,23 @@ La prima versione usa l'API cloud Northbound; Modbus TCP resta un fornitore succ
 Flusso Northbound:
 
 1. `POST /thirdData/login` con `userName` e `systemCode`; il token torna nell'header `xsrf-token` e va rimandato come `XSRF-TOKEN`.
-2. Elenco impianti per ricavare lo `stationCode`. `getStationList` è deprecato: usare l'endpoint che lo sostituisce nella Northbound Interface Reference.
+2. Elenco impianti per ricavare lo `stationCode`. `getStationList` è deprecato: si usa `stations` (`pageNo`) e, se l'account non è abilitato, `getStationList`. Se `Energy:FusionSolar:StationCode` è vuoto, l'app usa l'unico impianto dell'account e scrive il codice nel log; con più impianti chiede di configurarlo (deciso il 2026-10-28: nella UI SmartPVMS il codice `NE=…` non è facile da trovare). Nomi dei campi della risposta (`plantCode` o `stationCode`): `<DA VERIFICARE: risposta reale>`.
 3. `POST /thirdData/getKpiStationHour` con `stationCodes` e `collectTime` (epoch in millisecondi del giorno): restituisce le righe orarie del giorno.
 4. Per il dettaglio a 15 minuti: `getDevHistoryKpi` sul dispositivo meter, poi aggregazione. **Nella prima versione SunCash legge solo il dato orario** (`getKpiStationHour`): il dettaglio a 5 minuti è un'estensione, da fare quando i nomi dei campi del meter sono verificati su una risposta reale.
 
-Dominio base: il prefisso della pagina di login FusionSolar dell'utente, ad esempio `https://<prefisso>.fusionsolar.huawei.com/thirdData/`. `<DA VERIFICARE: prefisso reale dell'account>`
+Dominio base: il cluster della pagina FusionSolar web dell'utente, ad esempio `https://<cluster>.fusionsolar.huawei.com/thirdData/` (`uni002eu5…` → `eu5`). Verificato il 2026-10-28: con il cluster dell'indirizzo web il login Northbound riesce.
 
-Nomi dei campi KPI per energia immessa, prelevata, prodotta e consumata: `<DA VERIFICARE: nella Northbound Interface Reference e su una risposta reale>`. Senza smart meter sul punto di scambio l'energia immessa non è disponibile e l'app non ha senso.
+Campi KPI orari di `getKpiStationHour` (in kWh), verificati il 2026-10-28 sulla prima risposta reale: `PVYield`, `inverter_power`, `inverterYield`, `ongrid_power`, `chargeCap`, `dischargeCap`, `selfProvide`, `power_profit`, `theory_power`, `radiation_intensity`. **Prelievo e consumo della casa non ci sono.** SunCash legge:
+
+| Grandezza | Campo | Note |
+| --- | --- | --- |
+| Immessa | `ongrid_power` | |
+| Prodotta | `PVYield` | Energia dei pannelli. Non `inverter_power`: è l'uscita dell'inverter, che con una batteria ibrida può comprendere la scarica e nel bilancio la conterebbe due volte |
+| Carica / scarica batteria | `chargeCap` / `dischargeCap` | |
+| Autoconsumo dichiarato | `selfProvide` | Base `Reported`, vedi «Energia autoconsumata». `<DA VERIFICARE: se comprende la scarica della batteria>`: unica fonte trovata il README non ufficiale di FusionSolarPy, la Northbound Interface Reference non è stata consultata. Il fornitore scrive nel log, per ogni giorno, il totale di `selfProvide` accanto a quello del bilancio: se coincidono, la comprende |
+| Prelievo, consumo | — | Non nei KPI orari dell'impianto: serviranno i KPI del meter (`getDevHistoryKpi`) per il confronto con le bollette |
+
+I nomi restano configurabili (`Energy:FusionSolar:Fields`). Senza smart meter sul punto di scambio l'energia immessa non è disponibile e l'app non ha senso.
 
 ### Prezzi: API del GME
 
@@ -117,6 +127,13 @@ L'ora locale si ricava da `Period` (o da `Hour` con `PT60`) contando i quarti d'
 Verificato il 2026-10-28 sul [manuale tecnico delle API](https://www.mercatoelettrico.org/Portals/0/Documents/it-IT/20251015Manuale_tecnico_API.pdf) del 15 ottobre 2025 (§ 2, 3, 4 e 5.52).
 
 I dati restano del GME e non si possono usare a scopo di lucro. Per un uso personale va bene; se SunCash diventasse un prodotto, servirebbe un'altra fonte o un accordo.
+
+Le condizioni generali d'uso dell'API (lette il 2026-10-28) chiedono anche:
+
+- **citare la fonte** dove si usano i dati (art. 5): l'app mostra in fondo a ogni pagina «Fonte: Gestore dei Mercati Energetici S.p.A.»;
+- niente uso commerciale, credenziali personali e non cedibili, rispetto delle quote, nessuno scraping o *text and data mining* fuori dall'API (art. 6 e 6 bis);
+- nuove versioni delle condizioni vanno riaccettate entro 15 giorni, altrimenti la licenza decade (art. 13);
+- le condizioni firmate a mano valgono solo con la copia di un documento d'identità; firmate digitalmente, senza (art. 2).
 
 Fonti: [Huawei, openAPI account](https://docs.rs/crate/huawei_client/latest/source/docs/Communicate%20with%20FusionSolar%20through%20an%20openAPI%20account.pdf) · [HomeAssistant-FusionSolar](https://github.com/tijsverkoyen/homeassistant-fusionsolar) · [meteocontrol, setup Northbound](https://zammad.meteocontrol.de/help/en-us/6-datalogger-import-configuration/179-vcom-import-huawei-fusionsolar-api) · [GME, servizio API](https://gme.mercatoelettrico.org/en-US/Home/APIService) · [GME, manuale utente API](https://gme.mercatoelettrico.org/Portals/0/Documents/it-IT/20251015Manuale_Utente_API.pdf)
 
@@ -175,7 +192,15 @@ L'impianto **ha una batteria** (deciso il 2026-10-28), quindi la scorciatoia `A_
 C_q = Pr_q + I_q - E_q - Ch_q + Dis_q
 ```
 
-`Ch_q` e `Dis_q` sono l'energia caricata e scaricata dalla batteria. La riga dichiara da dove viene il consumo (`SelfConsumptionBasis = Measured | Balance`) e la dashboard lo segnala. Se il fornitore non dà né il consumo né i flussi della batteria, il risparmio non si calcola e la dashboard lo dice, invece di mostrare un numero sbagliato.
+`Ch_q` e `Dis_q` sono l'energia caricata e scaricata dalla batteria. Sottraendo il prelievo, `I_q` si elide: l'autoconsumo dal bilancio è `A_q = Pr_q - E_q - Ch_q + Dis_q` e **non serve conoscere il prelievo** (FusionSolar orario non lo dà).
+
+L'ordine delle fonti, deciso il 2026-10-28:
+
+1. `Measured`: consumo e prelievo misurati, `A_q = C_q - I_q`;
+2. `Reported`: l'autoconsumo calcolato e dichiarato dal fornitore (FusionSolar `selfProvide`), da verificare contro il bilancio (vedi «Primo fornitore»);
+3. `Balance`: il bilancio dei flussi qui sopra.
+
+La riga dichiara la base usata (`SelfConsumptionBasis = Measured | Reported | Balance`) e la dashboard la può segnalare. Se il fornitore non dà nulla di tutto questo, il risparmio non si calcola e la dashboard lo dice, invece di mostrare un numero sbagliato.
 
 #### Prezzo della bolletta
 
@@ -316,6 +341,7 @@ CREATE TABLE energy_readings (
     consumption_wh  INTEGER,           -- consumo della casa, se il fornitore lo dà
     battery_charge_wh    INTEGER,      -- energia caricata nella batteria
     battery_discharge_wh INTEGER,      -- energia scaricata dalla batteria
+    self_consumption_wh INTEGER,       -- autoconsumo dichiarato dal fornitore, se lo dà
     imported_at     INTEGER NOT NULL,
     PRIMARY KEY (ts_utc, resolution, source)
 );
@@ -493,7 +519,7 @@ docker compose up -d --build
 
 Il backup giornaliero è il terzo job dell'app, `db-backup`, alle 03:17: una copia coerente fatta da SQLite stesso con `VACUUM INTO`, mai una copia del file a database aperto. Le copie vanno in `Backup:Directory` (nel compose `./backups`) e si tengono per `Backup:KeepDays` giorni (predefinito 14). Stare nel processo dell'app tiene un solo scrittore sul file e mette l'esito del backup nella pagina «Stato» come gli altri job. Le copie in `./backups` vanno poi portate fuori dalla macchina (disco esterno, cloud) con lo strumento che si preferisce: un backup sullo stesso disco non protegge da un guasto del disco.
 
-In alternativa, **Azure App Service** (deciso il 2026-10-28; guida in [`docs/deploy-azure.md`](deploy-azure.md), workflow `Deploy` a ogni push su `main` con il publish profile, come il progetto idrosistemi). Una sola app: l'API serve anche il frontend da `wwwroot`. Può stare nel piano App Service già pagato per idrosistemi. Serve Always On (i job devono girare) e una sola istanza (SQLite vuole un solo scrittore). SQLite non va messo su un file system di rete (il `%HOME%` di App Service, Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Quindi il database sta sul disco locale dell'istanza (`%TEMP%`), che non sopravvive a un riavvio, e il backup va in `%HOME%` ogni notte e a ogni spegnimento; all'avvio, se il database manca, l'app riparte dall'ultima copia (`DatabaseRestore`). Il backup scrive la copia in locale e poi la sposta, così SQLite non apre mai un file sul disco di rete. I percorsi in configurazione accettano variabili d'ambiente (`%HOME%`, `%TEMP%`).
+In alternativa, **Azure App Service** (deciso il 2026-10-28; guida in [`docs/deploy-azure.md`](deploy-azure.md), workflow `Deploy` a ogni push su `main` con il publish profile, come il progetto idrosistemi). Una sola app: l'API serve anche il frontend da `wwwroot`. Sta nel piano App Service già pagato (`asp-bb-project`, Linux B1), app `suncash-bennaloz`. Serve Always On (i job devono girare) e una sola istanza (SQLite vuole un solo scrittore). SQLite non va messo su un file system di rete (il `%HOME%` di App Service, Azure Files, SMB, NFS): il locking non è affidabile e il database si corrompe. Quindi il database sta sul disco locale dell'istanza (`/tmp` su Linux, `%TEMP%` su Windows), che non sopravvive a un riavvio, e il backup va in `/home` (`%HOME%`) ogni notte e a ogni spegnimento; all'avvio, se il database manca, l'app riparte dall'ultima copia (`DatabaseRestore`). Il backup scrive la copia in locale e poi la sposta, così SQLite non apre mai un file sul disco di rete. I percorsi in configurazione accettano variabili d'ambiente (`%HOME%`, `%TEMP%`).
 
 > **Superato** (2026-10-28): poco prima era stata preparata la strada **Azure Container Apps** (Bicep, identità federata, due registrazioni app). È stata tolta dal repo perché chiedeva molta più configurazione dello schema App Service già in uso per idrosistemi. **Non va ripresa**: due modi di fare il deploy sono due configurazioni che divergono.
 

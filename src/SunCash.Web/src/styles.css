@@ -122,6 +122,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .muted { color: var(--text-muted); font-size: var(--fs-small); }
 
 @media (max-width: 860px) {
-  .page { padding: 12px; padding-bottom: 80px; }
+  .page { padding: 12px; }
   .chart { height: 280px; }
 }
