@@ -242,7 +242,15 @@ Tipo di offerta (`kind`):
 
 Il prezzo della bolletta ha due parti, che vivono in due tabelle diverse perché hanno origini diverse (decisione del 2026-10-28):
 
-- **parte regolata** (`regulated_charges`): trasporto e oneri variabili, accise, IVA. Le fissa ARERA, sono uguali per tutti i clienti domestici residenti e cambiano a trimestre. Sono dati pubblici: stanno **nel repo**, come dati iniziali del database, e si aggiornano con un commit. L'utente non inserisce nulla. Valori per trimestre e trattamento delle accise per i residenti: `<DA VERIFICARE: tabelle ARERA e Agenzia delle Dogane>`;
+- **parte regolata** (`regulated_charges`): trasporto e oneri variabili, accise, IVA. Le fissa ARERA, sono uguali per tutti i clienti domestici residenti e cambiano a trimestre. Sono dati pubblici: stanno **nel repo**, come dati iniziali del database, e si aggiornano con un commit. L'utente non inserisce nulla. Valori 2026, verificati il 2026-11-06 sulle tabelle ARERA (centesimi di euro/kWh, domestici residenti, quota energia):
+
+  | Dal | TD σ3 | UC3 | UC6 | ASOS | ARIM | Totale rete e oneri |
+  |---|---|---|---|---|---|---|
+  | 1° gennaio 2026 | 1,190 | 0,276 | 0,007 | 2,8657 | 0,1638 | **4,5025** |
+  | 1° luglio 2026 | 1,190 | 0,276 | 0,007 | 3,1515 | 0,1638 | **4,7883** |
+
+  Fonti: TD 2026 dalla delibera 575/2025/R/eel; UC3 e UC6 dalla tabella 7 della delibera 588/2025/R/com, confermati per tutto il 2026; ASOS e ARIM dalle delibere 588/2025/R/com (gennaio, confermati ad aprile dalla 98/2026/R/com) e 227/2026/R/com (luglio, confermati a ottobre dalla 343/2026/R/com). Ai domestici residenti gli oneri si applicano solo sui kWh: niente quota fissa né quota potenza.
+  Accise 0,0227 €/kWh, IVA 10%. Per la prima casa i primi 150 kWh del mese sono esenti, ma l'autoconsumo evita i kWh **in cima** al consumo del mese, che in una casa con fotovoltaico e batteria supera quasi sempre quella soglia: per questo si usa l'aliquota piena. `<DA VERIFICARE: aliquota delle accise sull'ultima bolletta, dopo la riforma del d.lgs. 43/2025>`;
 - **offerta** (`tariffs`): il prezzo dell'energia e le perdite. È l'unico dato dell'utente e cambia solo con il contratto. Sta nel database, mai nel repo.
 
 Entrambe hanno una data di inizio validità: quando qualcosa cambia si aggiunge una riga e lo storico continua a usare i valori del suo periodo.
@@ -441,7 +449,7 @@ Orario di pubblicazione degli esiti MGP del giorno dopo: `<DA VERIFICARE: DTF GM
 
 ### Backfill
 
-Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia rispetta lo stesso throttling del job ordinario: per FusionSolar un anno di storico richiede ore, ed è accettabile.
+Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia rispetta lo stesso throttling del job ordinario. Per FusionSolar ogni giorno di storico costa una chiamata e l'account ne concede poche al giorno (`<DA VERIFICARE: limite reale, in misura dal 2026-11-06>`): un anno richiederebbe settimane. Deciso il 2026-11-06: prima si recupera dal **1° ottobre 2026** a oggi, poi, con le chiamate che avanzano, si torna indietro fino al **1° maggio 2026**. `<DA FARE: recupero all'indietro nel job energy-import, insieme al budget giornaliero di chiamate>`.
 
 ### FusionSolar: sessione e rate limit
 
@@ -499,7 +507,7 @@ La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazion
 
 ```json
 {
-  "Sync": { "StartDate": "2026-01-01" },
+  "Sync": { "StartDate": "2026-10-01" },
   "Valuation": { "Regime": "RidZonale", "Zone": "NORD", "AnnualFixedCostsEur": 0 },
   "Energy": {
     "Provider": "FusionSolar",

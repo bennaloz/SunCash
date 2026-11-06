@@ -75,14 +75,15 @@ public class ValuationApiTests
     }
 
     [Fact]
-    public async Task Lo_stato_segnala_la_parte_regolata_mancante_e_i_job_mai_partiti()
+    public async Task Lo_stato_trova_la_parte_regolata_del_repo_e_segnala_i_job_mai_partiti()
     {
         await using var factory = new SunCashFactory();
         using var client = factory.CreateClient();
 
         using var json = JsonDocument.Parse(await client.GetStringAsync("/api/sync/status"));
 
-        Assert.True(json.RootElement.GetProperty("regulatedChargesMissing").GetBoolean());
+        // La parte regolata arriva dal file nel repo all'avvio: non manca mai.
+        Assert.False(json.RootElement.GetProperty("regulatedChargesMissing").GetBoolean());
         Assert.Equal("fusionsolar-cloud", json.RootElement.GetProperty("activeSource").GetString());
         Assert.All(json.RootElement.GetProperty("jobs").EnumerateArray(), j => Assert.True(j.GetProperty("stale").GetBoolean()));
     }

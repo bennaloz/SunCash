@@ -47,7 +47,7 @@ E in **Scalabilità orizzontale**: **una sola istanza**. SQLite vuole un solo pr
 | --- | --- |
 | `ConnectionStrings__SunCash` | `Data Source=/tmp/suncash/suncash.db` |
 | `Backup__Directory` | `/home/data/suncash/backups` |
-| `Sync__StartDate` | `2026-01-01` (da quando ricostruire lo storico) |
+| `Sync__StartDate` | `2026-10-01` (da quando ricostruire lo storico: FusionSolar concede poche chiamate al giorno, e ogni giorno di storico ne costa una) |
 | `Valuation__Zone` | `NORD` |
 | `Energy__Provider` | `FusionSolar` |
 | `Energy__FusionSolar__BaseUrl` | `https://<cluster>.fusionsolar.huawei.com/thirdData/`: il cluster è quello dell'indirizzo di FusionSolar web (`uni002eu5…` → `eu5`) |
