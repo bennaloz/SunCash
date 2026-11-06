@@ -10,9 +10,10 @@ namespace SunCash.Infrastructure.Gme;
 
 /// <summary>
 /// Client dell'API del GME (manuale tecnico del 15/10/2025): <c>Auth</c> per il JWT,
-/// <c>RequestData</c> per gli esiti MGP, <c>GetMyQuotas</c> per le quote. Fra due richieste aspetta
-/// <see cref="GmeOptions.MinIntervalBetweenRequests"/>; se il GME risponde 429 le quote sono finite e
-/// lancia <see cref="GmeQuotaExceededException"/>, senza riprovare.
+/// <c>RequestData</c> per gli esiti MGP, <c>GetMyQuotas</c> per le quote. Tiene il token per la durata
+/// dell'esecuzione e, poiché il JWT scade dopo 5 minuti, su 401 rifà il login una volta e ripete la
+/// richiesta. Fra due richieste aspetta <see cref="GmeOptions.MinIntervalBetweenRequests"/>; se il GME
+/// risponde 429 le quote sono finite e lancia <see cref="GmeQuotaExceededException"/>, senza riprovare.
 /// </summary>
 public sealed class GmeClient(HttpClient http, EndpointThrottle throttle, IOptions<GmeOptions> options)
 {
@@ -23,8 +24,10 @@ public sealed class GmeClient(HttpClient http, EndpointThrottle throttle, IOptio
     // I nomi dei campi vanno mandati come nel manuale (Login, Platform, …): niente camelCase.
     private static readonly JsonSerializerOptions Outgoing = new() { PropertyNamingPolicy = null };
 
-    /// <summary>Login: restituisce il token JWT.</summary>
-    public async Task<string> LoginAsync(CancellationToken ct)
+    private string? _token;
+
+    /// <summary>Login: prende un token JWT nuovo e lo tiene per le richieste successive.</summary>
+    public async Task LoginAsync(CancellationToken ct)
     {
         var o = options.Value;
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(o.BaseUrl, "api/v1/Auth"))
@@ -35,14 +38,14 @@ public sealed class GmeClient(HttpClient http, EndpointThrottle throttle, IOptio
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>(Json, ct);
         if (body is not { Success: true, Token: { Length: > 0 } token })
             throw new GmeException($"Login GME rifiutato: {body?.Reason ?? "risposta vuota"}.");
-        return token;
+        _token = token;
     }
 
     /// <summary>Prezzi zonali MGP (con il PUN) dei giorni [from, to], alla granularità <c>PT15</c> o <c>PT60</c>.</summary>
     public async Task<IReadOnlyList<GmeZonalPriceRecord>> GetZonalPricesAsync(
-        string token, DateOnly from, DateOnly to, string granularity, CancellationToken ct)
+        DateOnly from, DateOnly to, string granularity, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(options.Value.BaseUrl, "api/v1/RequestData"))
+        using var response = await SendAuthorizedAsync(() => new HttpRequestMessage(HttpMethod.Post, new Uri(options.Value.BaseUrl, "api/v1/RequestData"))
         {
             Content = JsonContent.Create(new
             {
@@ -53,10 +56,7 @@ public sealed class GmeClient(HttpClient http, EndpointThrottle throttle, IOptio
                 IntervalEnd = int.Parse(to.ToString("yyyyMMdd", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture),
                 Attributes = new Dictionary<string, string> { ["GranularityType"] = granularity },
             }, options: Outgoing),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        using var response = await SendAsync(request, ct);
+        }, ct);
         var body = await response.Content.ReadFromJsonAsync<DataResponse>(Json, ct);
         if (body is null)
             throw new GmeException("Risposta GME vuota.");
@@ -71,12 +71,32 @@ public sealed class GmeClient(HttpClient http, EndpointThrottle throttle, IOptio
     }
 
     /// <summary>Quote dell'utente così come le restituisce il GME (JSON grezzo, da scrivere nel log).</summary>
-    public async Task<string> GetMyQuotasAsync(string token, CancellationToken ct)
+    public async Task<string> GetMyQuotasAsync(CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(options.Value.BaseUrl, "api/v1/GetMyQuotas"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await SendAsync(request, ct);
+        using var response = await SendAuthorizedAsync(
+            () => new HttpRequestMessage(HttpMethod.Get, new Uri(options.Value.BaseUrl, "api/v1/GetMyQuotas")), ct);
         return await response.Content.ReadAsStringAsync(ct);
+    }
+
+    // Una richiesta si può mandare una volta sola: per ripeterla dopo il nuovo login la si ricrea.
+    private async Task<HttpResponseMessage> SendAuthorizedAsync(Func<HttpRequestMessage> create, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            if (_token is null)
+                await LoginAsync(ct);
+
+            using var request = create();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            try
+            {
+                return await SendAsync(request, ct);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+            {
+                _token = null;
+            }
+        }
     }
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)

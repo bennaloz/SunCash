@@ -101,14 +101,15 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   (`FusionSolar:MinIntervalPerEndpoint`). Su «frequenza eccessiva» il job **si ferma fino al
   ciclo successivo**: i retry ravvicinati allungano il blocco.
 - **GME**: login `/Auth` (JWT) a ogni esecuzione, `RequestData`, `contentResponse` = zip in
-  Base64 decompresso in memoria. Quote per minuto e per ora: pausa `Gme:MinIntervalBetweenRequests`
-  fra due richieste (stesso `EndpointThrottle` di FusionSolar, in `Http/`), e su **429** il job si
-  ferma con «riprova più tardi», mai un nuovo tentativo nella stessa esecuzione.
+  Base64 decompresso in memoria. Il JWT **dura 5 minuti**: su 401 il client rifà il login una volta.
+  Quota stretta: **100 connessioni all'ora**, quindi un mese per richiesta e 40 secondi fra due
+  richieste (stesso `EndpointThrottle` di FusionSolar, in `Http/`); su **429** il job si ferma con
+  «riprova più tardi», mai un nuovo tentativo nella stessa esecuzione.
 
 ## `<DA VERIFICARE>`: non inventare
 
 L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (se `selfProvide` di FusionSolar
-comprende la batteria, conferma dei codici `failCode`, quote GME, orario di pubblicazione MGP, 4 ottobre nelle fasce,
+comprende la batteria, conferma dei codici `failCode`, orario di pubblicazione MGP, 4 ottobre nelle fasce,
 meccanismo PMG, granularità GSE). **Non si riempiono a intuito**: si lasciano configurabili o
 come costanti nominate con un commento `// DA VERIFICARE: …` che rimanda all'analisi, e quando
 il valore è verificato si aggiorna l'analisi.

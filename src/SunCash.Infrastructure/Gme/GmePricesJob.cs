@@ -53,9 +53,9 @@ public sealed class GmePricesJob(
 
         try
         {
-            var token = await client.LoginAsync(ct);
-            await LogQuotasAsync(token, ct);
-            await ImportAsync(token, zones, from, tomorrow, rollingStart, cursor, ct);
+            await client.LoginAsync(ct);
+            await LogQuotasAsync(ct);
+            await ImportAsync(zones, from, tomorrow, rollingStart, cursor, ct);
         }
         catch (GmeQuotaExceededException)
         {
@@ -69,18 +69,18 @@ public sealed class GmePricesJob(
             : SyncOutcome.RetryLater($"Esiti MGP del {tomorrow:yyyy-MM-dd} non ancora pubblicati.");
     }
 
-    private async Task ImportAsync(string token, string[] zones, DateOnly from, DateOnly tomorrow, DateOnly rollingStart,
+    private async Task ImportAsync(string[] zones, DateOnly from, DateOnly tomorrow, DateOnly rollingStart,
         DateOnly cursor, CancellationToken ct)
     {
         for (var chunkStart = from; chunkStart <= tomorrow; chunkStart = chunkStart.AddDays(gme.Value.MaxDaysPerRequest))
         {
             var chunkEnd = Min(chunkStart.AddDays(gme.Value.MaxDaysPerRequest - 1), tomorrow);
 
-            var hourly = await client.GetZonalPricesAsync(token, chunkStart, chunkEnd, "PT60", ct);
+            var hourly = await client.GetZonalPricesAsync(chunkStart, chunkEnd, "PT60", ct);
             var imported = GmePriceMapper.ToMarketPrices(hourly, 60, zones).ToList();
             if (chunkEnd >= FirstQuarterHourDay)
             {
-                var quarters = await client.GetZonalPricesAsync(token, Max(chunkStart, FirstQuarterHourDay), chunkEnd, "PT15", ct);
+                var quarters = await client.GetZonalPricesAsync(Max(chunkStart, FirstQuarterHourDay), chunkEnd, "PT15", ct);
                 imported.AddRange(GmePriceMapper.ToMarketPrices(quarters, 15, zones));
             }
 
@@ -95,11 +95,11 @@ public sealed class GmePricesJob(
 
     // Le quote non sono documentate per account (docs/analisi.md, «Prezzi: API del GME»): si scrivono
     // nel log per tarare Gme:MinIntervalBetweenRequests. Se la lettura fallisce l'import va avanti.
-    private async Task LogQuotasAsync(string token, CancellationToken ct)
+    private async Task LogQuotasAsync(CancellationToken ct)
     {
         try
         {
-            logger.LogInformation("Quote GME: {Quotas}", await client.GetMyQuotasAsync(token, ct));
+            logger.LogInformation("Quote GME: {Quotas}", await client.GetMyQuotasAsync(ct));
         }
         catch (Exception ex) when (ex is GmeException or HttpRequestException)
         {
