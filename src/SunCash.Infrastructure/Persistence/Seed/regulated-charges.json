@@ -1,4 +1,7 @@
 {
-  "_nota": "Parte regolata ARERA del prezzo variabile della bolletta, clienti domestici residenti. Dati pubblici, aggiornati a ogni trimestre con un commit. DA VERIFICARE (docs/analisi.md, «Prezzo della bolletta»): quota variabile per kWh di trasporto e oneri di sistema dalle tabelle ARERA, accise dall'Agenzia delle Dogane. Finché l'elenco è vuoto il risparmio da autoconsumo non si calcola e la dashboard lo dice. Formato di una riga: { \"validFrom\": \"2026-10-01\", \"networkEurKwh\": 0.0, \"exciseEurKwh\": 0.0, \"vatRate\": 0.10 }",
-  "charges": []
+  "_nota": "Parte regolata ARERA del prezzo variabile della bolletta, clienti domestici residenti. Dati pubblici, aggiornati a ogni trimestre con un commit: si aggiunge una riga solo quando un valore cambia. networkEurKwh = TD quota energia (sigma3) + UC3 + UC6 + ASOS + ARIM, in euro/kWh; il calcolo e le fonti sono in docs/analisi.md, «Prezzo della bolletta». Formato di una riga: { \"validFrom\": \"2026-10-01\", \"networkEurKwh\": 0.0, \"exciseEurKwh\": 0.0, \"vatRate\": 0.10 }",
+  "charges": [
+    { "validFrom": "2026-01-01", "networkEurKwh": 0.045025, "exciseEurKwh": 0.0227, "vatRate": 0.10 },
+    { "validFrom": "2026-07-01", "networkEurKwh": 0.047883, "exciseEurKwh": 0.0227, "vatRate": 0.10 }
+  ]
 }

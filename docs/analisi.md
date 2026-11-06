@@ -242,7 +242,15 @@ Tipo di offerta (`kind`):
 
 Il prezzo della bolletta ha due parti, che vivono in due tabelle diverse perché hanno origini diverse (decisione del 2026-10-28):
 
-- **parte regolata** (`regulated_charges`): trasporto e oneri variabili, accise, IVA. Le fissa ARERA, sono uguali per tutti i clienti domestici residenti e cambiano a trimestre. Sono dati pubblici: stanno **nel repo**, come dati iniziali del database, e si aggiornano con un commit. L'utente non inserisce nulla. Valori per trimestre e trattamento delle accise per i residenti: `<DA VERIFICARE: tabelle ARERA e Agenzia delle Dogane>`;
+- **parte regolata** (`regulated_charges`): trasporto e oneri variabili, accise, IVA. Le fissa ARERA, sono uguali per tutti i clienti domestici residenti e cambiano a trimestre. Sono dati pubblici: stanno **nel repo**, come dati iniziali del database, e si aggiornano con un commit. L'utente non inserisce nulla. Valori 2026, verificati il 2026-11-06 sulle tabelle ARERA (centesimi di euro/kWh, domestici residenti, quota energia):
+
+  | Dal | TD σ3 | UC3 | UC6 | ASOS | ARIM | Totale rete e oneri |
+  |---|---|---|---|---|---|---|
+  | 1° gennaio 2026 | 1,190 | 0,276 | 0,007 | 2,8657 | 0,1638 | **4,5025** |
+  | 1° luglio 2026 | 1,190 | 0,276 | 0,007 | 3,1515 | 0,1638 | **4,7883** |
+
+  Fonti: TD 2026 dalla delibera 575/2025/R/eel; UC3 e UC6 dalla tabella 7 della delibera 588/2025/R/com, confermati per tutto il 2026; ASOS e ARIM dalle delibere 588/2025/R/com (gennaio, confermati ad aprile dalla 98/2026/R/com) e 227/2026/R/com (luglio, confermati a ottobre dalla 343/2026/R/com). Ai domestici residenti gli oneri si applicano solo sui kWh: niente quota fissa né quota potenza.
+  Accise 0,0227 €/kWh, IVA 10%. Per la prima casa i primi 150 kWh del mese sono esenti, ma l'autoconsumo evita i kWh **in cima** al consumo del mese, che in una casa con fotovoltaico e batteria supera quasi sempre quella soglia: per questo si usa l'aliquota piena. `<DA VERIFICARE: aliquota delle accise sull'ultima bolletta, dopo la riforma del d.lgs. 43/2025>`;
 - **offerta** (`tariffs`): il prezzo dell'energia e le perdite. È l'unico dato dell'utente e cambia solo con il contratto. Sta nel database, mai nel repo.
 
 Entrambe hanno una data di inizio validità: quando qualcosa cambia si aggiunge una riga e lo storico continua a usare i valori del suo periodo.
