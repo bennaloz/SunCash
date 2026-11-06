@@ -437,9 +437,16 @@ Due job in un unico processo, ognuno un `BackgroundService` con `PeriodicTimer` 
 | Job | Quando | Cosa importa | Finestra |
 | --- | --- | --- | --- |
 | `gme-prices` | Ogni giorno nel primo pomeriggio, con retry ogni 30 minuti fino a successo | Esiti MGP della zona configurata e PUN Index GME, a 15 e 60 minuti | Il giorno successivo, più gli ultimi 7 giorni per eventuali rettifiche |
-| `energy-import` | Ogni ora al minuto 10 | Le misure del fornitore attivo, alla granularità più fine che dichiara | Oggi e ieri, perché i cloud dei fornitori consolidano i dati in ritardo |
+| `energy-import` | Ogni ora al minuto 10 | Le misure del fornitore attivo, alla granularità più fine che dichiara | Al massimo i giorni che il fornitore concede per esecuzione (FusionSolar: uno), scelti per priorità: ieri, oggi, storico |
 
-`energy-import` non conosce il fornitore: chiede a `IEnergySource` un giorno alla volta e scrive quello che riceve. Prima rilegge ieri e oggi, poi avanza nello storico al massimo di `Energy:MaxBackfillDaysPerRun` giorni (predefinito 10) per esecuzione.
+`energy-import` non conosce il fornitore: chiede a `IEnergySource` un giorno alla volta e salva subito quello che riceve. A ogni esecuzione chiede al massimo `Capabilities.MaxDaysPerRun` giorni (per FusionSolar `Energy:FusionSolar:MaxDaysPerRun`, uno; per un fornitore senza limite proprio due più `Energy:MaxBackfillDaysPerRun`), scelti in quest'ordine (deciso il 2026-11-06):
+
+1. **ieri**, finché non c'è una lettura fatta almeno un'ora dopo la sua fine, perché i cloud consolidano in ritardo;
+2. **oggi**, se l'ultima lettura ha più di tre ore;
+3. **lo storico**, dal giorno mancante più recente indietro fino a `Sync:StartDate`;
+4. **oggi**, con quello che avanza.
+
+Quali giorni mancano lo dicono le misure salvate (`imported_at`), non un contatore: un buco lasciato da un fermo dell'app si richiude da solo. Un giorno senza misure non risulta mai letto, quindi `Sync:StartDate` non va messo prima dell'installazione. Il cursore in `sync_state` è il giorno da cui lo storico è completo fino a ieri, e «Stato» lo mostra come «dal …»; per `gme-prices` resta «fino al …». Con una chiamata all'ora FusionSolar recupera circa venti giorni di storico al giorno.
 
 `gme-prices` gira alle 13:30 italiane e riprova ogni 30 minuti finché escono i prezzi a 15 minuti di domani. Chiede al GME al massimo `Gme:MaxDaysPerRequest` giorni (31) per richiesta e fra due richieste aspetta `Gme:MinIntervalBetweenRequests` (40 secondi), per stare sotto le 100 connessioni all'ora. Se le quote finiscono (429) chiude con «riprova più tardi» senza perdere i giorni già importati.
 
@@ -449,7 +456,7 @@ Orario di pubblicazione degli esiti MGP del giorno dopo: `<DA VERIFICARE: DTF GM
 
 ### Backfill
 
-Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia rispetta lo stesso throttling del job ordinario. Per FusionSolar ogni giorno di storico costa una chiamata e l'account ne concede poche al giorno (`<DA VERIFICARE: limite reale, in misura dal 2026-11-06>`): un anno richiederebbe settimane. Deciso il 2026-11-06: prima si recupera dal **1° ottobre 2026** a oggi, poi, con le chiamate che avanzano, si torna indietro fino al **1° maggio 2026**. `<DA FARE: recupero all'indietro nel job energy-import, insieme al budget giornaliero di chiamate>`.
+Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia sta dentro lo stesso limite di chiamate del job ordinario. Per FusionSolar ogni giorno di storico costa una chiamata e se ne fa una all'ora: deciso il 2026-11-06, lo storico va fino al **1° maggio 2026** (`Sync:StartDate`) e si recupera dal giorno più recente indietro, così ottobre e novembre arrivano per primi.
 
 ### FusionSolar: sessione e rate limit
 
@@ -507,7 +514,7 @@ La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazion
 
 ```json
 {
-  "Sync": { "StartDate": "2026-10-01" },
+  "Sync": { "StartDate": "2026-05-01" },
   "Valuation": { "Regime": "RidZonale", "Zone": "NORD", "AnnualFixedCostsEur": 0 },
   "Energy": {
     "Provider": "FusionSolar",
@@ -516,7 +523,8 @@ La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazion
       "UserName": "<segreto>",
       "SystemCode": "<segreto>",
       "StationCode": "<da ricavare al primo login>",
-      "MinIntervalPerEndpoint": "00:05:00"
+      "MinIntervalPerEndpoint": "00:05:00",
+      "MaxDaysPerRun": 1
     }
   },
   "Gme": {
@@ -528,7 +536,7 @@ La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazion
 }
 ```
 
-Ogni fornitore ha la sua sezione sotto `Energy`, validata solo se è quello attivo. Il valore di `MinIntervalPerEndpoint` è prudente e va tarato sui limiti reali dell'account.
+Ogni fornitore ha la sua sezione sotto `Energy`, validata solo se è quello attivo. Il valore di `MinIntervalPerEndpoint` è prudente e va tarato sui limiti reali dell'account. Il limite che conta davvero è `MaxDaysPerRun` (uno): misurato il 2026-11-06, la seconda chiamata a `getKpiStationHour` cinque minuti dopo la prima prende sempre «frequenza eccessiva» (`407`). L'unico riferimento trovato, una copia non ufficiale della Northbound Interface Reference di SmartPVMS, dà circa 24 + 10 chiamate al giorno per utente e un login ogni due minuti; `<DA VERIFICARE: limite esatto per getKpiStationHour>`.
 
 ### Deploy
 

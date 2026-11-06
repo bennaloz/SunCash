@@ -29,6 +29,15 @@ public sealed class FusionSolarOptions
     /// <summary>Intervallo minimo fra due chiamate allo stesso endpoint. Prudente: va tarato sull'account.</summary>
     public TimeSpan MinIntervalPerEndpoint { get; set; } = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// Giorni chiesti a <c>getKpiStationHour</c> in un'esecuzione del job (una all'ora): uno, cioè una
+    /// chiamata all'ora. Misurato il 2026-11-06: la seconda chiamata a cinque minuti dalla prima prende
+    /// sempre «frequenza eccessiva». DA VERIFICARE (docs/analisi.md, «Primo fornitore: Huawei
+    /// FusionSolar»): il limite esatto dell'account, che Huawei non documenta in modo univoco.
+    /// </summary>
+    [Range(1, 24)]
+    public int MaxDaysPerRun { get; set; } = 1;
+
     /// <summary>Nomi dei campi KPI orari in <c>dataItemMap</c>.</summary>
     public FusionSolarFields Fields { get; set; } = new();
 }

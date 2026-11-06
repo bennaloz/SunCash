@@ -1,6 +1,7 @@
 using SunCash.Domain.Calendar;
 using SunCash.Domain.Tariffs;
 using SunCash.Domain.Valuation;
+using SunCash.Infrastructure.Sync;
 
 namespace SunCash.Api.Endpoints;
 
@@ -149,7 +150,8 @@ public sealed record BillInput(decimal? ImportKwh, decimal AmountEur, string? No
 public sealed record GsePaymentInput(decimal AmountEur, string? Notes);
 
 /// <summary>Stato di un job.</summary>
-public sealed record SyncJobStatusDto(string Job, string? Source, DateTimeOffset? LastSuccessUtc, DateOnly? Cursor, string? LastError, bool Stale);
+public sealed record SyncJobStatusDto(string Job, string? Source, DateTimeOffset? LastSuccessUtc, DateOnly? Cursor,
+    SyncCursorKind CursorKind, string? LastError, bool Stale);
 
 /// <summary>Stato complessivo della sincronizzazione.</summary>
 /// <param name="DaysWithGaps">Giorni recenti con quarti d'ora senza energia o senza prezzo.</param>

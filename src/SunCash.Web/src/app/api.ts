@@ -86,6 +86,8 @@ export interface SyncJobStatus {
   source: string | null;
   lastSuccessUtc: string | null;
   cursor: string | null;
+  /** CompleteUntil: storico completo fino al cursore; CompleteFrom: dal cursore fino a ieri. */
+  cursorKind: 'CompleteUntil' | 'CompleteFrom';
   lastError: string | null;
   stale: boolean;
 }

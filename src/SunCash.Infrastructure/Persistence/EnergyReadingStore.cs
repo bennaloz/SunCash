@@ -29,6 +29,23 @@ public sealed class EnergyReadingStore(SunCashDbContext db, TimeProvider clock)
             r.ProductionWh, r.ConsumptionWh, r.BatteryChargeWh, r.BatteryDischargeWh, r.SelfConsumptionWh, now], ct);
     }
 
+    /// <summary>
+    /// Per ogni giorno italiano in [from, to] che ha misure del fornitore, l'ultima volta che sono state
+    /// importate. Il job ci decide quali giorni rileggere.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<DateOnly, DateTimeOffset>> LastImportByDayAsync(
+        string source, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var fromUtc = ItalianTime.DayBoundsUtc(from).StartUtc;
+        var toUtc = ItalianTime.DayBoundsUtc(to).EndUtc;
+        var rows = await db.EnergyReadings.AsNoTracking()
+            .Where(r => r.Source == source && r.TsUtc >= fromUtc && r.TsUtc < toUtc)
+            .Select(r => new { r.TsUtc, r.ImportedAt })
+            .ToListAsync(ct);
+        return rows.GroupBy(r => ItalianTime.LocalDate(r.TsUtc))
+            .ToDictionary(g => g.Key, g => g.Max(r => r.ImportedAt));
+    }
+
     /// <summary>Le misure che iniziano nell'intervallo [from, to), di qualunque fornitore.</summary>
     public async Task<IReadOnlyList<EnergyReading>> ListAsync(DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken ct)
     {

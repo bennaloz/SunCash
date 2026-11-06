@@ -18,7 +18,7 @@ import { longDate } from '../format';
         <section class="card table-wrap">
           <h2>Sincronizzazione · fornitore di energia: {{ s.activeSource }}</h2>
           <table>
-            <thead><tr><th>Job</th><th>Ultimo successo</th><th>Storico completo fino a</th><th>Ultimo messaggio</th><th></th></tr></thead>
+            <thead><tr><th>Job</th><th>Ultimo successo</th><th>Storico completo</th><th>Ultimo messaggio</th><th></th></tr></thead>
             <tbody>
               @for (j of s.jobs; track j.job) {
                 <tr>
@@ -27,7 +27,7 @@ import { longDate } from '../format';
                     @if (j.stale && j.lastSuccessUtc) { <span class="badge warn">fermo da più di 24 ore</span> }
                   </td>
                   <td class="when" data-label="Ultimo successo">{{ j.lastSuccessUtc ? when(j.lastSuccessUtc) : 'mai' }}</td>
-                  <td class="when" data-label="Storico completo fino a">{{ j.cursor ? long(j.cursor) : '—' }}</td>
+                  <td class="when" data-label="Storico completo">{{ j.cursor ? (j.cursorKind === 'CompleteFrom' ? 'dal ' : 'fino al ') + long(j.cursor) : '—' }}</td>
                   <td data-label="Ultimo messaggio">{{ j.lastError ?? '—' }}</td>
                   <td class="action"><button (click)="run(j.job)" [disabled]="running() === j.job">{{ running() === j.job ? 'In corso…' : 'Avvia ora' }}</button></td>
                 </tr>

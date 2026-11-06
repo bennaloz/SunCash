@@ -6,8 +6,21 @@ public interface ISyncJob
     /// <summary>Nome stabile, chiave di <c>sync_state</c> e di <c>POST /api/sync/{job}/run</c>.</summary>
     string Name { get; }
 
+    /// <summary>Cosa vuol dire il cursore dello storico in <c>sync_state</c>.</summary>
+    SyncCursorKind CursorKind => SyncCursorKind.CompleteUntil;
+
     /// <summary>Un'esecuzione.</summary>
     Task<SyncOutcome> RunAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>Il verso in cui un job ricostruisce lo storico, e quindi come si legge il suo cursore.</summary>
+public enum SyncCursorKind
+{
+    /// <summary>Storico completo dalla data di partenza fino al cursore (si avanza verso oggi).</summary>
+    CompleteUntil,
+
+    /// <summary>Storico completo dal cursore fino a ieri (si torna indietro da oggi).</summary>
+    CompleteFrom,
 }
 
 /// <summary>Esito di un'esecuzione.</summary>

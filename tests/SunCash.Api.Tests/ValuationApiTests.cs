@@ -86,6 +86,9 @@ public class ValuationApiTests
         Assert.False(json.RootElement.GetProperty("regulatedChargesMissing").GetBoolean());
         Assert.Equal("fusionsolar-cloud", json.RootElement.GetProperty("activeSource").GetString());
         Assert.All(json.RootElement.GetProperty("jobs").EnumerateArray(), j => Assert.True(j.GetProperty("stale").GetBoolean()));
+        // Lo storico dell'energia si ricostruisce all'indietro: «Stato» lo legge come «dal …».
+        Assert.Equal("CompleteFrom", json.RootElement.GetProperty("jobs").EnumerateArray()
+            .Single(j => j.GetProperty("job").GetString() == "energy-import").GetProperty("cursorKind").GetString());
     }
 
     private static async Task PutTariffAsync(HttpClient client, string validFrom, decimal price)
