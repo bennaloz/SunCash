@@ -22,16 +22,21 @@ public sealed class GmeOptions
     /// <summary>Password (scade ogni 6 mesi).</summary>
     public string Password { get; set; } = "";
 
-    /// <summary>Giorni per richiesta: le quote del GME contano oggetti × campi. Valore prudente.</summary>
+    /// <summary>
+    /// Giorni per richiesta. Le quote contano anche i dati (oggetti × campi): una richiesta di 7 giorni
+    /// ne vale circa 60 000 contro un massimo di 2 250 000 al minuto (GetMyQuotas, 2026-11-06), quindi un
+    /// mese per richiesta sta largo e consuma meno connessioni, che sono la quota stretta.
+    /// </summary>
     [Range(1, 31)]
-    public int MaxDaysPerRequest { get; set; } = 7;
+    public int MaxDaysPerRequest { get; set; } = 31;
 
     /// <summary>
-    /// Pausa minima fra due richieste al GME. Le quote per minuto e per ora sono personali e si leggono
-    /// con <c>GetMyQuotas</c> (il job le scrive nel log a ogni esecuzione). DA VERIFICARE
-    /// (docs/analisi.md, «Prezzi: API del GME»): valore da tarare sulle quote reali dell'account.
+    /// Pausa minima fra due richieste al GME, login compreso. Quote dell'account lette con
+    /// <c>GetMyQuotas</c> il 2026-11-06: 10 connessioni al minuto e 100 all'ora. 40 secondi fanno al
+    /// massimo 90 connessioni all'ora. Il job riscrive le quote nel log a ogni esecuzione: se il GME
+    /// le cambia, si ritara qui (docs/analisi.md, «Prezzi: API del GME»).
     /// </summary>
-    public TimeSpan MinIntervalBetweenRequests { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan MinIntervalBetweenRequests { get; set; } = TimeSpan.FromSeconds(40);
 
     /// <summary>Vero se utente e password ci sono.</summary>
     public bool HasCredentials => !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password);

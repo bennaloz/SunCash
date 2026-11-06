@@ -144,6 +144,51 @@ public sealed class GmePricesJobTests : IDisposable
         Assert.Equal(SyncStatus.RetryLater, (await run).Status);
     }
 
+    [Fact]
+    public async Task Se_il_token_scade_rifa_il_login_una_volta_e_ripete_la_richiesta()
+    {
+        // Il primo login dà un token che il GME considera già scaduto, il secondo uno valido.
+        var logins = 0;
+        _gme.Given(Request.Create().WithPath("/request/api/v1/Auth").UsingPost())
+            .RespondWith(Response.Create().WithCallback(_ => new WireMock.ResponseMessage
+            {
+                StatusCode = 200,
+                BodyData = new WireMock.Util.BodyData
+                {
+                    BodyAsString = JsonSerializer.Serialize(new { Success = true, token = ++logins == 1 ? "scaduto" : "valido" }),
+                    DetectedBodyType = WireMock.Types.BodyType.String,
+                },
+            }));
+        _gme.Given(Request.Create().WithPath("/request/api/v1/RequestData").UsingPost().WithHeader("Authorization", "Bearer scaduto"))
+            .RespondWith(Response.Create().WithStatusCode(401));
+        _gme.Given(Request.Create().WithPath("/request/api/v1/RequestData").UsingPost().WithHeader("Authorization", "Bearer valido"))
+            .RespondWith(Response.Create().WithBodyAsJson(new
+            {
+                RequestId = "1", FormatType = ".json.zip", ResultRequest = "No data found", ContentResponse = "",
+            }));
+        await using var db = await TestDatabase.CreateAsync();
+
+        var outcome = await RunJobAsync(db);
+
+        Assert.Equal(SyncStatus.RetryLater, outcome.Status);
+        Assert.Equal(2, logins);
+        Assert.Single(_gme.LogEntries, e => e.ResponseMessage?.StatusCode is 401);
+    }
+
+    [Fact]
+    public async Task Un_401_anche_dopo_il_nuovo_login_e_un_errore()
+    {
+        GivenLogin();
+        _gme.Given(Request.Create().WithPath("/request/api/v1/RequestData").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(401));
+        await using var db = await TestDatabase.CreateAsync();
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => RunJobAsync(db));
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, ex.StatusCode);
+        Assert.Equal(2, _gme.LogEntries.Count(e => (e.RequestMessage?.Path ?? "").EndsWith("Auth")));
+    }
+
     private async Task WaitForRequestsAsync(int count)
     {
         for (var i = 0; i < 100 && _gme.LogEntries.Count() < count; i++)
@@ -154,7 +199,7 @@ public sealed class GmePricesJobTests : IDisposable
         RunJobAsync(db, new GmeOptions
         {
             BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto",
-            MinIntervalBetweenRequests = TimeSpan.Zero,
+            MinIntervalBetweenRequests = TimeSpan.Zero, MaxDaysPerRequest = 7,
         });
 
     private async Task<SyncOutcome> RunJobAsync(TestDatabase db, GmeOptions gmeOptions)

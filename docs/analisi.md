@@ -120,9 +120,21 @@ Dal 15 ottobre 2025 il GME espone i dati di mercato con un'API ufficiale; l'FTPS
    La risposta ha `RequestId`, `FormatType` (`.json.zip`), `ResultRequest` (il motivo, se fallisce) e `ContentResponse`: uno zip in Base64 con dentro un file `.json`.
 4. Ogni elemento del JSON ha `FlowDate` (yyyyMMdd), `Hour` (1-25), `Period` (1-100, il quarto d'ora del giorno), `Market`, `Zone`, `Price` (€/MWh) e `Notes` (ad esempio «Auction cancelled»). Il **PUN Index GME** arriva nella stessa risposta, con `Zone = "PUN"`.
 5. `GranularityType` vale `PT15`, `PT30` o `PT60`, solo per MGP e solo dal 1° ottobre 2025; prima di quella data esiste solo `PT60`. Senza l'attributo il GME restituisce la granularità minima.
-6. Il servizio ha quote per minuto e per ora (connessioni e dati scaricati, dove un «dato» è un oggetto per un campo), consultabili con `GET …/api/v1/GetMyQuotas`. Valori per l'account: `<DA VERIFICARE: il job scrive la risposta di GetMyQuotas nel log a ogni esecuzione>`. Al primo avvio reale (2026-11-06) la ricostruzione dello storico ha ricevuto **HTTP 429** dopo una ventina di richieste in mezzo minuto. Da allora:
-   - fra due richieste il client aspetta `Gme:MinIntervalBetweenRequests` (predefinito 10 secondi, da tarare sulle quote lette);
-   - un 429 non si riprova nella stessa esecuzione: il job salva ciò che è arrivato e chiude con «riprova più tardi», e riprende da lì al tentativo successivo (art. 6 bis delle condizioni: rispetto delle quote).
+6. Il servizio ha quote per minuto e per ora (connessioni e dati scaricati, dove un «dato» è un oggetto per un campo), consultabili con `GET …/api/v1/GetMyQuotas`. Valori per l'account, letti il 2026-11-06 (il job riscrive la risposta nel log a ogni esecuzione):
+
+   | Quota | Valore |
+   |---|---|
+   | connessioni contemporanee | 5 |
+   | connessioni al minuto | 10 |
+   | connessioni all'ora | **100** |
+   | dati al minuto | 2 250 000 |
+   | dati all'ora | 350 000 000 |
+
+   Una richiesta `ME_ZonalPrices` di 7 giorni vale circa 60 000 dati: la quota stretta sono le **connessioni all'ora**, non i dati. Per questo:
+   - si chiede un mese per richiesta (`Gme:MaxDaysPerRequest` = 31);
+   - fra due richieste, login compreso, il client aspetta `Gme:MinIntervalBetweenRequests` = 40 secondi, cioè al massimo 90 connessioni all'ora;
+   - un **429** non si riprova nella stessa esecuzione: il job salva ciò che è arrivato, chiude con «riprova più tardi» e riprende da lì al tentativo successivo (art. 6 bis delle condizioni: rispetto delle quote). Il primo avvio reale (2026-11-06), senza pausa, ha preso il 429 dopo una ventina di richieste in mezzo minuto.
+7. Il **token JWT dura 5 minuti** (verificato il 2026-11-06: 401 esattamente 5 minuti dopo il login). Il client lo tiene per l'esecuzione e, su 401, rifà il login una volta e ripete la richiesta.
 
 L'ora locale si ricava da `Period` (o da `Hour` con `PT60`) contando i quarti d'ora del giorno italiano: così il giorno da 92 e quello da 100 quarti d'ora tornano da soli, senza interpretare orari.
 
@@ -421,7 +433,7 @@ Due job in un unico processo, ognuno un `BackgroundService` con `PeriodicTimer` 
 
 `energy-import` non conosce il fornitore: chiede a `IEnergySource` un giorno alla volta e scrive quello che riceve. Prima rilegge ieri e oggi, poi avanza nello storico al massimo di `Energy:MaxBackfillDaysPerRun` giorni (predefinito 10) per esecuzione.
 
-`gme-prices` gira alle 13:30 italiane e riprova ogni 30 minuti finché escono i prezzi a 15 minuti di domani. Chiede al GME al massimo `Gme:MaxDaysPerRequest` giorni (predefinito 7) per richiesta, perché le quote contano oggetti per campi, e fra due richieste aspetta `Gme:MinIntervalBetweenRequests`. Se le quote finiscono (429) chiude con «riprova più tardi» senza perdere i giorni già importati.
+`gme-prices` gira alle 13:30 italiane e riprova ogni 30 minuti finché escono i prezzi a 15 minuti di domani. Chiede al GME al massimo `Gme:MaxDaysPerRequest` giorni (31) per richiesta e fra due richieste aspetta `Gme:MinIntervalBetweenRequests` (40 secondi), per stare sotto le 100 connessioni all'ora. Se le quote finiscono (429) chiude con «riprova più tardi» senza perdere i giorni già importati.
 
 Entrambi partono anche all'avvio dell'app (così il backfill comincia subito) e a mano da `POST /api/sync/{job}/run`. Un solo punto li esegue, `SyncJobRunner`: un'esecuzione alla volta per job, esito sempre scritto in `sync_state`.
 
