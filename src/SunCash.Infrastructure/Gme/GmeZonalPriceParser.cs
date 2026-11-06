@@ -58,4 +58,8 @@ public static class GmeZonalPriceParser
 }
 
 /// <summary>Errore nel dialogo con il GME.</summary>
-public sealed class GmeException(string message) : Exception(message);
+public class GmeException(string message) : Exception(message);
+
+/// <summary>Il GME ha risposto 429: le quote per minuto o per ora sono esaurite. Si riprova al
+/// tentativo successivo del job, mai subito (art. 6 bis delle condizioni: rispetto delle quote).</summary>
+public sealed class GmeQuotaExceededException() : GmeException("Quote GME esaurite (HTTP 429).");

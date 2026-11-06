@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
 
-namespace SunCash.Infrastructure.Energy.FusionSolar;
+namespace SunCash.Infrastructure.Http;
 
 /// <summary>
 /// Rispetta un intervallo minimo fra due chiamate allo stesso endpoint, aspettando il proprio turno.
+/// Lo usano tutti i client esterni (FusionSolar, GME): ogni client dà alle sue chiavi un prefisso proprio.
 /// Singleton: lo stato deve sopravvivere fra un'esecuzione del job e l'altra.
 /// </summary>
 public sealed class EndpointThrottle(TimeProvider clock)

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using SunCash.Infrastructure.Gme;
+using SunCash.Infrastructure.Http;
 using SunCash.Infrastructure.Options;
 using SunCash.Infrastructure.Persistence;
 using SunCash.Infrastructure.Sync;
@@ -87,21 +89,87 @@ public sealed class GmePricesJobTests : IDisposable
         Assert.Contains("Password scaduta", ex.Message);
     }
 
+    [Fact]
+    public async Task Con_le_quote_esaurite_tiene_cio_che_e_arrivato_e_riprova_piu_tardi()
+    {
+        GivenLogin();
+        // Un giorno per richiesta: il 24 ottobre arriva, al 25 il GME risponde 429.
+        _gme.Given(Request.Create().WithPath("/request/api/v1/RequestData").UsingPost().WithBody(new WildcardMatcher("*20261024*")))
+            .RespondWith(Response.Create().WithBodyAsJson(new
+            {
+                RequestId = "1", FormatType = ".json.zip", ResultRequest = "No data found", ContentResponse = "",
+            }));
+        _gme.Given(Request.Create().WithPath("/request/api/v1/RequestData").UsingPost().WithBody(new WildcardMatcher("*20261025*")))
+            .RespondWith(Response.Create().WithStatusCode(429));
+        await using var db = await TestDatabase.CreateAsync();
+
+        var outcome = await RunJobAsync(db, new GmeOptions
+        {
+            BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto",
+            MinIntervalBetweenRequests = TimeSpan.Zero, MaxDaysPerRequest = 1,
+        });
+
+        Assert.Equal(SyncStatus.RetryLater, outcome.Status);
+        Assert.Contains("Quote GME esaurite", outcome.Message);
+        // Al primo 429 si ferma: nessun altro tentativo nella stessa esecuzione.
+        var requests = _gme.LogEntries.Where(e => (e.RequestMessage?.Path ?? "").EndsWith("RequestData")).ToList();
+        Assert.Equal(429, requests[^1].ResponseMessage!.StatusCode);
+        Assert.Single(requests, e => e.ResponseMessage!.StatusCode is 429);
+    }
+
+    [Fact]
+    public async Task Fra_due_richieste_aspetta_la_pausa_configurata()
+    {
+        GivenLogin();
+        GivenNoData("PT15");
+        GivenNoData("PT60");
+        await using var db = await TestDatabase.CreateAsync();
+
+        var run = RunJobAsync(db, new GmeOptions
+        {
+            BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto",
+            MinIntervalBetweenRequests = TimeSpan.FromSeconds(10),
+        });
+        await WaitForRequestsAsync(1);
+        await Task.Delay(200);
+
+        Assert.Single(_gme.LogEntries);
+        Assert.False(run.IsCompleted);
+        for (var i = 0; i < 10 && !run.IsCompleted; i++)
+        {
+            _clock.Advance(TimeSpan.FromSeconds(10));
+            await Task.WhenAny(run, Task.Delay(200));
+        }
+
+        Assert.Equal(SyncStatus.RetryLater, (await run).Status);
+    }
+
+    private async Task WaitForRequestsAsync(int count)
+    {
+        for (var i = 0; i < 100 && _gme.LogEntries.Count() < count; i++)
+            await Task.Delay(20);
+    }
+
     private Task<SyncOutcome> RunJobAsync(TestDatabase db) =>
-        RunJobAsync(db, new GmeOptions { BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto" });
+        RunJobAsync(db, new GmeOptions
+        {
+            BaseUrl = new Uri(_gme.Url + "/request/"), UserName = "utente", Password = "segreto",
+            MinIntervalBetweenRequests = TimeSpan.Zero,
+        });
 
     private async Task<SyncOutcome> RunJobAsync(TestDatabase db, GmeOptions gmeOptions)
     {
         await using var context = db.NewContext();
         var options = MsOptions.Create(gmeOptions);
         var job = new GmePricesJob(
-            new GmeClient(new HttpClient(), options),
+            new GmeClient(new HttpClient(), new EndpointThrottle(_clock), options),
             new MarketPriceStore(context, _clock),
             new SyncStateStore(context, _clock),
             options,
             MsOptions.Create(new SyncOptions { StartDate = new DateOnly(2026, 10, 24) }),
             MsOptions.Create(new ValuationOptions { Zone = "NORD" }),
-            _clock);
+            _clock,
+            NullLogger<GmePricesJob>.Instance);
         return await job.RunAsync(CancellationToken.None);
     }
 

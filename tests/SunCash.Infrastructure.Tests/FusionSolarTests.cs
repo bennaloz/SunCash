@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SunCash.Domain.Energy;
 using SunCash.Domain.Time;
 using SunCash.Infrastructure.Energy.FusionSolar;
+using SunCash.Infrastructure.Http;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;

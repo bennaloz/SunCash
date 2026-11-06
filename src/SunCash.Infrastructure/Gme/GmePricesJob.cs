@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SunCash.Domain.Prices;
 using SunCash.Domain.Time;
@@ -10,7 +11,8 @@ namespace SunCash.Infrastructure.Gme;
 /// <summary>
 /// Job <c>gme-prices</c>: esiti MGP della zona configurata e PUN, a 15 e 60 minuti. Ogni volta
 /// rilegge gli ultimi 7 giorni (rettifiche) e il giorno dopo; al primo avvio ricostruisce lo storico
-/// da <c>Sync:StartDate</c>. È riuscito quando i prezzi di domani ci sono.
+/// da <c>Sync:StartDate</c>. È riuscito quando i prezzi di domani ci sono. Se le quote del GME
+/// finiscono a metà, ciò che è già arrivato resta salvato e il job riprende da lì al tentativo dopo.
 /// </summary>
 public sealed class GmePricesJob(
     GmeClient client,
@@ -19,7 +21,8 @@ public sealed class GmePricesJob(
     IOptions<GmeOptions> gme,
     IOptions<SyncOptions> sync,
     IOptions<ValuationOptions> valuation,
-    TimeProvider clock) : ISyncJob
+    TimeProvider clock,
+    ILogger<GmePricesJob> logger) : ISyncJob
 {
     /// <summary>Nome del job.</summary>
     public const string JobName = "gme-prices";
@@ -48,7 +51,27 @@ public sealed class GmePricesJob(
         var cursor = (await state.GetAsync(JobName, ct))?.Cursor ?? start;
         var from = Max(start, Min(cursor, rollingStart));
 
-        var token = await client.LoginAsync(ct);
+        try
+        {
+            var token = await client.LoginAsync(ct);
+            await LogQuotasAsync(token, ct);
+            await ImportAsync(token, zones, from, tomorrow, rollingStart, cursor, ct);
+        }
+        catch (GmeQuotaExceededException)
+        {
+            var reached = (await state.GetAsync(JobName, ct))?.Cursor ?? from;
+            return SyncOutcome.RetryLater($"Quote GME esaurite: storico importato fino al {reached.AddDays(-1):yyyy-MM-dd}, riprendo al prossimo tentativo.");
+        }
+
+        // Si misura sui prezzi a 15 minuti: dal 1° ottobre 2025 il giorno dopo li ha sempre.
+        return await prices.CountQuartersAsync(zone, tomorrow, ct) > 0
+            ? SyncOutcome.Done()
+            : SyncOutcome.RetryLater($"Esiti MGP del {tomorrow:yyyy-MM-dd} non ancora pubblicati.");
+    }
+
+    private async Task ImportAsync(string token, string[] zones, DateOnly from, DateOnly tomorrow, DateOnly rollingStart,
+        DateOnly cursor, CancellationToken ct)
+    {
         for (var chunkStart = from; chunkStart <= tomorrow; chunkStart = chunkStart.AddDays(gme.Value.MaxDaysPerRequest))
         {
             var chunkEnd = Min(chunkStart.AddDays(gme.Value.MaxDaysPerRequest - 1), tomorrow);
@@ -68,11 +91,20 @@ public sealed class GmePricesJob(
             if (newCursor > cursor)
                 await state.SaveCursorAsync(JobName, cursor = newCursor, null, ct);
         }
+    }
 
-        // Si misura sui prezzi a 15 minuti: dal 1° ottobre 2025 il giorno dopo li ha sempre.
-        return await prices.CountQuartersAsync(zone, tomorrow, ct) > 0
-            ? SyncOutcome.Done()
-            : SyncOutcome.RetryLater($"Esiti MGP del {tomorrow:yyyy-MM-dd} non ancora pubblicati.");
+    // Le quote non sono documentate per account (docs/analisi.md, «Prezzi: API del GME»): si scrivono
+    // nel log per tarare Gme:MinIntervalBetweenRequests. Se la lettura fallisce l'import va avanti.
+    private async Task LogQuotasAsync(string token, CancellationToken ct)
+    {
+        try
+        {
+            logger.LogInformation("Quote GME: {Quotas}", await client.GetMyQuotasAsync(token, ct));
+        }
+        catch (Exception ex) when (ex is GmeException or HttpRequestException)
+        {
+            logger.LogWarning("Quote GME non lette: {Error}", ex.Message);
+        }
     }
 
     private static DateOnly Min(DateOnly a, DateOnly b) => a < b ? a : b;
