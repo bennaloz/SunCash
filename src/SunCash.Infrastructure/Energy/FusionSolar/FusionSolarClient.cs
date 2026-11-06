@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using SunCash.Infrastructure.Http;
 
 namespace SunCash.Infrastructure.Energy.FusionSolar;
 
@@ -46,7 +47,7 @@ public sealed class FusionSolarClient(
     private async Task<string> LoginAsync(CancellationToken ct)
     {
         var o = options.Value;
-        await throttle.WaitTurnAsync("login", o.MinIntervalPerEndpoint, ct);
+        await throttle.WaitTurnAsync("fusionsolar:login", o.MinIntervalPerEndpoint, ct);
         using var response = await http.PostAsJsonAsync(new Uri(o.BaseUrl!, "login"),
             new { userName = o.UserName, systemCode = o.SystemCode }, ct);
         response.EnsureSuccessStatusCode();
@@ -62,7 +63,7 @@ public sealed class FusionSolarClient(
 
     private async Task<JsonElement> SendAsync(string endpoint, object body, string token, CancellationToken ct)
     {
-        await throttle.WaitTurnAsync(endpoint, options.Value.MinIntervalPerEndpoint, ct);
+        await throttle.WaitTurnAsync($"fusionsolar:{endpoint}", options.Value.MinIntervalPerEndpoint, ct);
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(options.Value.BaseUrl!, endpoint))
         {
             Content = JsonContent.Create(body),

@@ -8,6 +8,7 @@ using SunCash.Infrastructure.DbBackup;
 using SunCash.Infrastructure.Energy;
 using SunCash.Infrastructure.Energy.FusionSolar;
 using SunCash.Infrastructure.Gme;
+using SunCash.Infrastructure.Http;
 using SunCash.Infrastructure.Options;
 using SunCash.Infrastructure.Persistence;
 using SunCash.Infrastructure.Sync;
@@ -43,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ManualDataStore>();
         services.AddScoped<ValuationReader>();
 
+        services.AddSingleton<EndpointThrottle>();
         services.AddHttpClient<GmeClient>();
         services.AddScoped<ISyncJob, GmePricesJob>();
         services.AddScoped<ISyncJob, EnergyImportJob>();
@@ -90,7 +92,6 @@ public static class ServiceCollectionExtensions
                 services.AddOptions<FusionSolarOptions>().Bind(configuration.GetSection(FusionSolarOptions.Section))
                     .ValidateDataAnnotations().ValidateOnStart();
                 services.AddSingleton<FusionSolarSession>();
-                services.AddSingleton<EndpointThrottle>();
                 services.AddHttpClient<FusionSolarClient>();
                 services.AddScoped<FusionSolarStationLocator>();
                 services.AddScoped<IEnergySource, FusionSolarEnergySource>();

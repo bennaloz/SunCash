@@ -101,7 +101,9 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
   (`FusionSolar:MinIntervalPerEndpoint`). Su «frequenza eccessiva» il job **si ferma fino al
   ciclo successivo**: i retry ravvicinati allungano il blocco.
 - **GME**: login `/Auth` (JWT) a ogni esecuzione, `RequestData`, `contentResponse` = zip in
-  Base64 decompresso in memoria.
+  Base64 decompresso in memoria. Quote per minuto e per ora: pausa `Gme:MinIntervalBetweenRequests`
+  fra due richieste (stesso `EndpointThrottle` di FusionSolar, in `Http/`), e su **429** il job si
+  ferma con «riprova più tardi», mai un nuovo tentativo nella stessa esecuzione.
 
 ## `<DA VERIFICARE>`: non inventare
 

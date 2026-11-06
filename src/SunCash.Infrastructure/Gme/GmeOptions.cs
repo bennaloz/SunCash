@@ -26,6 +26,13 @@ public sealed class GmeOptions
     [Range(1, 31)]
     public int MaxDaysPerRequest { get; set; } = 7;
 
+    /// <summary>
+    /// Pausa minima fra due richieste al GME. Le quote per minuto e per ora sono personali e si leggono
+    /// con <c>GetMyQuotas</c> (il job le scrive nel log a ogni esecuzione). DA VERIFICARE
+    /// (docs/analisi.md, «Prezzi: API del GME»): valore da tarare sulle quote reali dell'account.
+    /// </summary>
+    public TimeSpan MinIntervalBetweenRequests { get; set; } = TimeSpan.FromSeconds(10);
+
     /// <summary>Vero se utente e password ci sono.</summary>
     public bool HasCredentials => !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password);
 }
