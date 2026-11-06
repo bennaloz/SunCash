@@ -22,11 +22,14 @@ import { longDate } from '../format';
             <tbody>
               @for (j of s.jobs; track j.job) {
                 <tr>
-                  <td>{{ jobLabel[j.job] ?? j.job }} @if (j.stale) { <span class="notice warn">da più di 24 ore</span> }</td>
-                  <td>{{ j.lastSuccessUtc ? when(j.lastSuccessUtc) : 'mai' }}</td>
-                  <td>{{ j.cursor ? long(j.cursor) : '—' }}</td>
-                  <td>{{ j.lastError ?? '—' }}</td>
-                  <td><button (click)="run(j.job)" [disabled]="running() === j.job">{{ running() === j.job ? 'In corso…' : 'Avvia ora' }}</button></td>
+                  <td>
+                    <div class="job">{{ jobLabel[j.job] ?? j.job }}</div>
+                    @if (j.stale && j.lastSuccessUtc) { <span class="badge warn">fermo da più di 24 ore</span> }
+                  </td>
+                  <td class="when" data-label="Ultimo successo">{{ j.lastSuccessUtc ? when(j.lastSuccessUtc) : 'mai' }}</td>
+                  <td class="when" data-label="Storico completo fino a">{{ j.cursor ? long(j.cursor) : '—' }}</td>
+                  <td data-label="Ultimo messaggio">{{ j.lastError ?? '—' }}</td>
+                  <td class="action"><button (click)="run(j.job)" [disabled]="running() === j.job">{{ running() === j.job ? 'In corso…' : 'Avvia ora' }}</button></td>
                 </tr>
               }
             </tbody>
@@ -42,7 +45,22 @@ import { longDate } from '../format';
       }
     </div>
   `,
-  styles: `.gap { display: inline-block; margin: 0 6px 6px 0; text-decoration: none; }`,
+  styles: `
+    .gap { display: inline-block; margin: 0 6px 6px 0; text-decoration: none; }
+    td { vertical-align: middle; }
+    .job { font-weight: 600; }
+    .job + .badge { margin-top: 4px; }
+    td.when { white-space: nowrap; }
+    /* Sul telefono la tabella diventa una scheda per job: niente scorrimento laterale. */
+    @media (max-width: 860px) {
+      table, tbody, tr, td { display: block; width: auto; }
+      thead { display: none; }
+      tr { padding: 8px 0; border-bottom: 1px solid var(--border); }
+      td { border: none; padding: 2px 0; white-space: normal; }
+      td[data-label]::before { content: attr(data-label) ': '; color: var(--text-muted); }
+      td.action { padding-top: 6px; }
+    }
+  `,
 })
 export class StatusPage {
   private readonly api = inject(Api);
