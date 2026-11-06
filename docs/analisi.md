@@ -441,7 +441,7 @@ Orario di pubblicazione degli esiti MGP del giorno dopo: `<DA VERIFICARE: DTF GM
 
 ### Backfill
 
-Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia rispetta lo stesso throttling del job ordinario. Per FusionSolar ogni giorno di storico costa una chiamata e l'account ne concede poche al giorno (`<DA VERIFICARE: limite reale, in misura dal 2026-11-06>`): un anno richiederebbe settimane, quindi lo storico parte dal **1° ottobre 2026** (deciso il 2026-11-06).
+Al primo avvio ogni job riparte da `Sync:StartDate` e avanza un giorno alla volta, aggiornando `sync_state.cursor_utc`. Il backfill del fornitore di energia rispetta lo stesso throttling del job ordinario. Per FusionSolar ogni giorno di storico costa una chiamata e l'account ne concede poche al giorno (`<DA VERIFICARE: limite reale, in misura dal 2026-11-06>`): un anno richiederebbe settimane. Deciso il 2026-11-06: prima si recupera dal **1° ottobre 2026** a oggi, poi, con le chiamate che avanzano, si torna indietro fino al **1° maggio 2026**. `<DA FARE: recupero all'indietro nel job energy-import, insieme al budget giornaliero di chiamate>`.
 
 ### FusionSolar: sessione e rate limit
 
