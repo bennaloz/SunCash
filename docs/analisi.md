@@ -536,7 +536,7 @@ La configurazione usa le opzioni tipizzate di .NET (`IOptions<T>` con validazion
 }
 ```
 
-Ogni fornitore ha la sua sezione sotto `Energy`, validata solo se è quello attivo. Il valore di `MinIntervalPerEndpoint` è prudente e va tarato sui limiti reali dell'account. Il limite che conta davvero è `MaxDaysPerRun` (uno): misurato il 2026-11-06, la seconda chiamata a `getKpiStationHour` cinque minuti dopo la prima prende sempre «frequenza eccessiva» (`407`). L'unico riferimento trovato, una copia non ufficiale della Northbound Interface Reference di SmartPVMS, dà circa 24 + 10 chiamate al giorno per utente e un login ogni due minuti; `<DA VERIFICARE: limite esatto per getKpiStationHour>`.
+Ogni fornitore ha la sua sezione sotto `Energy`, validata solo se è quello attivo. Il valore di `MinIntervalPerEndpoint` è prudente e va tarato sui limiti reali dell'account. Il limite che conta davvero è `MaxDaysPerRun` (uno): misurato il 2026-11-06, la seconda chiamata a `getKpiStationHour` cinque minuti dopo la prima prende sempre «frequenza eccessiva» (`407`), mentre una all'ora passa (alle 18:10 e alle 19:15 italiane, dopo il deploy della correzione). Quel giorno il job girava due volte all'ora per un difetto dello scheduler (il timer che si sveglia un attimo prima dell'ora faceva ricalcolare la stessa ora), corretto con `SyncScheduler.NextOccurrence`. L'unico riferimento trovato, una copia non ufficiale della Northbound Interface Reference di SmartPVMS, dà circa 24 + 10 chiamate al giorno per utente e un login ogni due minuti; `<DA VERIFICARE: limite esatto per getKpiStationHour>`.
 
 ### Deploy
 

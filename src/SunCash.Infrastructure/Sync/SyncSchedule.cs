@@ -20,9 +20,10 @@ public sealed class SyncScheduler(SyncSchedule schedule, SyncJobRunner runner, T
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        DateTimeOffset? waitedFor = null;
         while (!stoppingToken.IsCancellationRequested)
         {
-            var next = _cron.GetNextOccurrence(clock.GetUtcNow(), ItalianTime.Zone)
+            var next = NextOccurrence(_cron, clock.GetUtcNow(), waitedFor)
                        ?? throw new InvalidOperationException($"Il cron di {schedule.JobName} non ha prossime esecuzioni.");
 
             var outcome = await runner.RunAsync(schedule.JobName, stoppingToken);
@@ -37,6 +38,16 @@ public sealed class SyncScheduler(SyncSchedule schedule, SyncJobRunner runner, T
             logger.LogDebug("Job {Job}: prossima esecuzione {Next}", schedule.JobName, next);
             if (wait > TimeSpan.Zero)
                 await Task.Delay(wait, clock, stoppingToken);
+            waitedFor = next;
         }
     }
+
+    /// <summary>
+    /// La prossima esecuzione, mai prima di quella appena attesa. Il timer può svegliarsi qualche
+    /// millisecondo prima dell'ora: calcolando da «adesso» si otterrebbe di nuovo la stessa ora e il
+    /// job girerebbe due volte di fila. È successo il 2026-11-06: ogni ora una seconda chiamata a
+    /// FusionSolar, puntualmente bloccata per frequenza eccessiva.
+    /// </summary>
+    public static DateTimeOffset? NextOccurrence(CronExpression cron, DateTimeOffset now, DateTimeOffset? waitedFor) =>
+        cron.GetNextOccurrence(waitedFor is { } w && w > now ? w : now, ItalianTime.Zone);
 }
