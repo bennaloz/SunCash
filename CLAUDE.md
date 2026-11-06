@@ -97,9 +97,10 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 ### Client esterni — vincoli che costano se ignorati
 
 - **FusionSolar**: una sola sessione attiva, token in memoria, re-login solo a sessione scaduta.
-  Controllare sempre `success`/`failCode` anche con HTTP 200. Un limitatore per endpoint
-  (`FusionSolar:MinIntervalPerEndpoint`). Su «frequenza eccessiva» il job **si ferma fino al
-  ciclo successivo**: i retry ravvicinati allungano il blocco.
+  Controllare sempre `success`/`failCode` anche con HTTP 200. **Una chiamata a `getKpiStationHour`
+  per esecuzione** (`FusionSolar:MaxDaysPerRun`): la seconda a pochi minuti prende «frequenza
+  eccessiva». Il job sceglie il giorno per priorità (ieri, oggi, storico dal più recente indietro)
+  e su «frequenza eccessiva» **si ferma fino al ciclo successivo**: i retry ravvicinati allungano il blocco.
 - **GME**: login `/Auth` (JWT) a ogni esecuzione, `RequestData`, `contentResponse` = zip in
   Base64 decompresso in memoria. Il JWT **dura 5 minuti**: su 401 il client rifà il login una volta.
   Quota stretta: **100 connessioni all'ora**, quindi un mese per richiesta e 40 secondi fra due

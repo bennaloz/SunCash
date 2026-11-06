@@ -20,7 +20,9 @@ public interface IEnergySource
 /// <summary>Capacità dichiarate da un fornitore.</summary>
 /// <param name="ResolutionsMinutes">Granularità delle misure che restituisce (5, 15, 60).</param>
 /// <param name="CanReadHistory">Vero se può restituire giorni passati (backfill); falso per le letture solo dal vivo.</param>
-public sealed record EnergySourceCapabilities(IReadOnlyList<int> ResolutionsMinutes, bool CanReadHistory);
+/// <param name="MaxDaysPerRun">Quanti giorni al massimo chiedere in un'esecuzione del job, se il fornitore
+/// ha un limite di chiamate; <c>null</c> = nessun limite proprio.</param>
+public sealed record EnergySourceCapabilities(IReadOnlyList<int> ResolutionsMinutes, bool CanReadHistory, int? MaxDaysPerRun = null);
 
 /// <summary>I soli tre esiti che un fornitore espone al job.</summary>
 public enum EnergyFetchStatus

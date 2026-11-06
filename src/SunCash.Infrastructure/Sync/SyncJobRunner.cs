@@ -13,11 +13,11 @@ public sealed class SyncJobRunner(IServiceScopeFactory scopes, ILogger<SyncJobRu
 {
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    /// <summary>I nomi dei job registrati.</summary>
-    public IReadOnlyList<string> JobNames()
+    /// <summary>I job registrati, con il significato del loro cursore.</summary>
+    public IReadOnlyList<(string Name, SyncCursorKind CursorKind)> Jobs()
     {
         using var scope = scopes.CreateScope();
-        return scope.ServiceProvider.GetServices<ISyncJob>().Select(j => j.Name).ToList();
+        return scope.ServiceProvider.GetServices<ISyncJob>().Select(j => (j.Name, j.CursorKind)).ToList();
     }
 
     /// <summary>

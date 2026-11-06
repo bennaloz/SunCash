@@ -24,10 +24,10 @@ public static class SyncEndpoints
         {
             var now = clock.GetUtcNow();
             var stored = (await states.ListAsync(ct)).ToDictionary(s => s.Job);
-            var jobs = runner.JobNames().Select(name => stored.TryGetValue(name, out var s)
-                ? new SyncJobStatusDto(name, s.Source, s.LastSuccessUtc, s.Cursor, s.LastError,
+            var jobs = runner.Jobs().Select(j => stored.TryGetValue(j.Name, out var s)
+                ? new SyncJobStatusDto(j.Name, s.Source, s.LastSuccessUtc, s.Cursor, j.CursorKind, s.LastError,
                     s.LastSuccessUtc is null || now - s.LastSuccessUtc > StaleAfter)
-                : new SyncJobStatusDto(name, null, null, null, null, true)).ToList();
+                : new SyncJobStatusDto(j.Name, null, null, null, j.CursorKind, null, true)).ToList();
 
             var yesterday = ItalianTime.LocalDate(now).AddDays(-1);
             var gaps = (await reader.ForDaysAsync(yesterday.AddDays(1 - GapLookbackDays), yesterday, ct))

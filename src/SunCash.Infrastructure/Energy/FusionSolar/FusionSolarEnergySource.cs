@@ -29,7 +29,7 @@ public sealed class FusionSolarEnergySource(
     public string Id => SourceId;
 
     /// <inheritdoc />
-    public EnergySourceCapabilities Capabilities { get; } = new([60], CanReadHistory: true);
+    public EnergySourceCapabilities Capabilities => new([60], CanReadHistory: true, options.Value.MaxDaysPerRun);
 
     /// <inheritdoc />
     public async Task<EnergyFetchResult> FetchDayAsync(DateOnly localDate, CancellationToken ct)
