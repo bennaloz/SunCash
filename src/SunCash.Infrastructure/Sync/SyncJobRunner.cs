@@ -20,6 +20,17 @@ public sealed class SyncJobRunner(IServiceScopeFactory scopes, ILogger<SyncJobRu
         return scope.ServiceProvider.GetServices<ISyncJob>().Select(j => j.Name).ToList();
     }
 
+    /// <summary>
+    /// Il messaggio che «Stato» mostra per un job finito in eccezione. Gli errori HTTP di .NET sono in
+    /// inglese e parlano di «status code»: si riscrivono in italiano con il codice, che è ciò che serve.
+    /// </summary>
+    public static string FailureMessage(Exception ex) => ex switch
+    {
+        HttpRequestException { StatusCode: { } code } => $"Il servizio esterno ha risposto con l'errore HTTP {(int)code}.",
+        HttpRequestException => $"Servizio esterno non raggiungibile: {ex.Message}",
+        _ => ex.Message,
+    };
+
     /// <summary>Esegue il job; <c>null</c> se non esiste.</summary>
     public async Task<SyncOutcome?> RunAsync(string jobName, CancellationToken ct)
     {
@@ -43,7 +54,7 @@ public sealed class SyncJobRunner(IServiceScopeFactory scopes, ILogger<SyncJobRu
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Job {Job} fallito", jobName);
-                outcome = SyncOutcome.Failed(ex.Message);
+                outcome = SyncOutcome.Failed(FailureMessage(ex));
             }
 
             if (outcome.Status == SyncStatus.Done)
