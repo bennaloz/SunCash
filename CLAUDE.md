@@ -81,7 +81,8 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 - Su Azure App Service (`docs/deploy-azure.md`, workflow `Deploy` con publish profile come
   idrosistemi; app `suncash-bennaloz` nel piano Linux `asp-bb-project`) l'API serve anche il
   frontend da `wwwroot`. Il disco locale (`/tmp`) non sopravvive a un riavvio: il database riparte
-  dall'ultimo backup in `/home` (`DatabaseRestore`), e il backup gira anche allo spegnimento.
+  dall'ultimo backup in `/home` (`DatabaseRestore`): il backup gira **ogni ora**, perché quello allo
+  spegnimento non è garantito (riavvii notturni senza backup, 2026-11-07 e 08).
   ⛔ Mai puntare la connessione SQLite su `/home` (è storage di rete). Una sola istanza, Always On, login Microsoft attivo. La strada Container Apps
   è stata tolta il 2026-10-28 e non va ripresa.
 - Le credenziali GME sono facoltative all'avvio (il job lo segnala in «Stato»); quelle del
@@ -109,8 +110,7 @@ tests/…                      Domain / Infrastructure (WireMock.Net, SQLite su 
 
 ## `<DA VERIFICARE>`: non inventare
 
-L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (se `selfProvide` di FusionSolar
-comprende la batteria, conferma dei codici `failCode`, orario di pubblicazione MGP, 4 ottobre nelle fasce,
+L'analisi marca come `<DA VERIFICARE>` ciò che non è ancora noto (conferma dei codici `failCode`, orario di pubblicazione MGP, 4 ottobre nelle fasce,
 meccanismo PMG, granularità GSE). **Non si riempiono a intuito**: si lasciano configurabili o
 come costanti nominate con un commento `// DA VERIFICARE: …` che rimanda all'analisi, e quando
 il valore è verificato si aggiorna l'analisi.

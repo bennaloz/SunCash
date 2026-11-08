@@ -64,7 +64,7 @@ public sealed class FusionSolarFields
     public string BatteryCharge { get; set; } = "chargeCap";
     /// <summary>Energia scaricata dalla batteria.</summary>
     public string BatteryDischarge { get; set; } = "dischargeCap";
-    /// <summary>Autoconsumo calcolato da FusionSolar. DA VERIFICARE (docs/analisi.md): se comprende la
-    /// scarica della batteria; il fornitore scrive nel log il confronto giornaliero con il bilancio.</summary>
+    /// <summary>Autoconsumo calcolato da FusionSolar: comprende la scarica della batteria (verificato il
+    /// 2026-11-08, docs/analisi.md); il fornitore scrive nel log il confronto giornaliero con il bilancio.</summary>
     public string SelfConsumption { get; set; } = "selfProvide";
 }

@@ -6,7 +6,8 @@ namespace SunCash.Infrastructure.DbBackup;
 
 /// <summary>
 /// Un backup anche quando l'app si ferma (nuovo deploy, riavvio): dove il disco del database non
-/// sopravvive, è ciò che evita di perdere le modifiche fatte dopo il backup notturno.
+/// sopravvive, riduce le modifiche perse dopo l'ultimo backup orario. Non è garantito: se la
+/// piattaforma ferma il container senza preavviso non gira (successo il 2026-11-07 e il 2026-11-08).
 /// </summary>
 public sealed class BackupOnShutdown(SyncJobRunner runner, IOptions<BackupOptions> options) : IHostedService
 {
