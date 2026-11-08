@@ -70,13 +70,15 @@ public static class ServiceCollectionExtensions
     /// Le pianificazioni (docs/analisi.md, «Job di sincronizzazione»). GME: primo pomeriggio, con
     /// tentativi ogni 30 minuti finché escono i prezzi di domani. DA VERIFICARE: orario di
     /// pubblicazione degli esiti MGP. Energia: ogni ora al minuto 10; se il fornitore chiede di
-    /// rallentare si aspetta il ciclo successivo, mai un tentativo ravvicinato. Backup: di notte.
+    /// rallentare si aspetta il ciclo successivo, mai un tentativo ravvicinato. Backup: ogni ora, perché su
+    /// App Service il disco del database sparisce a ogni riavvio e il backup allo spegnimento non è
+    /// garantito (2026-11-07 e 08: due riavvii notturni senza backup, persi quasi un giorno di storico).
     /// </summary>
     public static IReadOnlyList<SyncSchedule> Schedules { get; } =
     [
         new(GmePricesJob.JobName, "30 13 * * *", TimeSpan.FromMinutes(30)),
         new(EnergyImportJob.JobName, "10 * * * *", null),
-        new(DatabaseBackupJob.JobName, "17 3 * * *", null),
+        new(DatabaseBackupJob.JobName, "17 * * * *", null),
     ];
 
     /// <summary>I fornitori di energia disponibili, per nome di configurazione.</summary>

@@ -88,9 +88,10 @@ public sealed class FusionSolarEnergySource(
     }
 
     /// <summary>
-    /// DA VERIFICARE (docs/analisi.md): non si sa se <c>selfProvide</c> comprenda la scarica della
-    /// batteria. Per ogni giorno si scrivono nel log l'autoconsumo dichiarato e quello del bilancio
-    /// (prodotta − immessa − carica + scarica): se coincidono, la comprende.
+    /// Per ogni giorno si scrivono nel log l'autoconsumo dichiarato (<c>selfProvide</c>) e quello del
+    /// bilancio (prodotta − immessa − carica + scarica). Così si è verificato, il 2026-11-08, che
+    /// <c>selfProvide</c> comprende la scarica della batteria e sta 1,7-2,1 kWh al giorno sotto il
+    /// bilancio (docs/analisi.md); il confronto resta nel log per accorgersi se cambia.
     /// </summary>
     private void LogSelfConsumptionCheck(DateOnly localDate, IReadOnlyCollection<EnergyReading> readings)
     {

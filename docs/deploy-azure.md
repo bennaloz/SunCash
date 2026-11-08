@@ -16,7 +16,7 @@ workflow **Deploy** a ogni push su `main` (o a mano da Actions) con il *publish 
   il 2026-10-28 (`https://suncash-bennaloz.azurewebsites.net`).
 - **Database sul disco locale** dell'istanza (`/tmp`), che **non sopravvive** a un riavvio: SQLite
   non va sul disco condiviso `/home`, che è uno storage di rete. Il **backup** va invece in
-  `/home` ogni notte e a ogni spegnimento, e all'avvio l'app, se non trova il database, riparte
+  `/home` ogni ora e a ogni spegnimento (che però non è garantito), e all'avvio l'app, se non trova il database, riparte
   dall'ultima copia. Energia e prezzi li reimportano comunque i job.
 - **Accesso**: autenticazione integrata di App Service con account Microsoft.
 - **Segreti**: impostazioni dell'App Service, mai nel repo né su GitHub.
